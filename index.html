@@ -3,14 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Anatomi Rangka Manusia Interaktif - Biologi Sistem Gerak</title>
-    <!-- Tailwind CSS CDN -->
+    <title>Atlas Anatomi Rangka Manusia 3D - Sistem Gerak Biologi</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Google Fonts: Inter & Plus Jakarta Sans -->
+    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
     
+    <!-- Three.js r128 & OrbitControls CDN (Stabil & Kompatibel GitHub Pages tanpa masalah CORS) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
     <script>
         tailwind.config = {
             theme: {
@@ -18,26 +22,6 @@
                     fontFamily: {
                         sans: ['Inter', 'sans-serif'],
                         display: ['Plus Jakarta Sans', 'sans-serif'],
-                    },
-                    colors: {
-                        medical: {
-                            50: '#f0fdfa',
-                            100: '#ccfbf1',
-                            200: '#99f6e4',
-                            500: '#14b8a6',
-                            600: '#0d9488',
-                            700: '#0f766e',
-                            900: '#134e4a',
-                        },
-                        bone: {
-                            base: '#f5efe6',
-                            stroke: '#8c7a6b',
-                            hover: '#fef08a',
-                            hoverStroke: '#ca8a04',
-                            active: '#2dd4bf',
-                            activeStroke: '#0f766e',
-                            dim: '#e2e8f0'
-                        }
                     }
                 }
             }
@@ -45,531 +29,243 @@
     </script>
 
     <style>
-        /* Kustomisasi Scrollbar yang Rapi */
+        /* Kustomisasi Scrollbar Dark Medis */
         ::-webkit-scrollbar {
             width: 6px;
             height: 6px;
         }
         ::-webkit-scrollbar-track {
-            background: #f1f5f9;
-            border-radius: 9999px;
+            background: #0f172a;
         }
         ::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
+            background: #334155;
             border-radius: 9999px;
         }
         ::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
+            background: #475569;
         }
 
-        /* Gaya Interaktif untuk Segmen Tulang SVG */
-        .bone-group {
-            cursor: pointer;
-            transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
-            transform-origin: center;
+        /* Kanvas 3D responsif */
+        #canvas-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            min-height: 540px;
+            touch-action: none;
+            cursor: grab;
+            background: radial-gradient(circle at 50% 42%, #1e293b 0%, #0f172a 65%, #020617 100%);
         }
-
-        .bone-group path,
-        .bone-group ellipse,
-        .bone-group circle,
-        .bone-group rect,
-        .bone-group polygon {
-            fill: #f7f2e7;
-            stroke: #64584c;
-            stroke-width: 1.6;
-            stroke-linecap: round;
-            stroke-linejoin: round;
-            transition: fill 0.2s ease, stroke 0.2s ease, stroke-width 0.2s ease, filter 0.2s ease;
+        #canvas-container:active {
+            cursor: grabbing;
         }
-
-        /* Efek Hover pada Tulang */
-        .bone-group:hover path,
-        .bone-group:hover ellipse,
-        .bone-group:hover circle,
-        .bone-group:hover rect,
-        .bone-group:hover polygon {
-            fill: #fde047;
-            stroke: #b45309;
-            stroke-width: 2.2;
-            filter: drop-shadow(0 0 6px rgba(250, 204, 21, 0.7));
-        }
-
-        /* Efek Saat Tulang Dipilih (Active) */
-        .bone-group.active path,
-        .bone-group.active ellipse,
-        .bone-group.active circle,
-        .bone-group.active rect,
-        .bone-group.active polygon {
-            fill: #2dd4bf !important;
-            stroke: #0f766e !important;
-            stroke-width: 2.5 !important;
-            filter: drop-shadow(0 0 8px rgba(20, 184, 166, 0.65));
-        }
-
-        /* Efek Dimmed saat Filter Kategori Aktif */
-        .bone-group.dimmed {
-            opacity: 0.25;
-            pointer-events: none;
-        }
-
-        /* Efek Pulse saat Mode Kuis Berhasil/Salah */
-        @keyframes pulseSuccess {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.03); }
-        }
-        .quiz-correct {
-            animation: pulseSuccess 0.5s ease-in-out;
-        }
-
-        /* Background Grid Anatomi Medis */
-        .medical-grid-bg {
-            background-color: #f8fafc;
-            background-image: 
-                linear-gradient(to right, rgba(148, 163, 184, 0.12) 1px, transparent 1px),
-                linear-gradient(to bottom, rgba(148, 163, 184, 0.12) 1px, transparent 1px);
-            background-size: 24px 24px;
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            outline: none;
         }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
+<body class="bg-slate-950 text-slate-100 font-sans antialiased min-h-screen flex flex-col selection:bg-teal-500 selection:text-white">
 
-    <!-- Navbar / Header Utama -->
-    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+    <!-- Navbar Utama -->
+    <header class="bg-slate-900/90 backdrop-blur-md border-b border-slate-800 sticky top-0 z-30">
+        <div class="max-w-[1440px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center text-white shadow-md shadow-teal-500/20 shrink-0">
-                    <!-- Ikon Tulang SVG -->
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-400 to-cyan-600 flex items-center justify-center text-slate-950 shadow-lg shadow-teal-500/20 shrink-0">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 5.636a2.5 2.5 0 00-3.536 0 2.5 2.5 0 01-3.535 0 2.5 2.5 0 00-3.536 3.536 2.5 2.5 0 010 3.535l-2.121 2.122a2.5 2.5 0 01-3.536 0 2.5 2.5 0 000 3.535 2.5 2.5 0 003.536 0 2.5 2.5 0 013.535 0 2.5 2.5 0 003.536-3.535 2.5 2.5 0 010-3.536l2.121-2.121a2.5 2.5 0 013.536 0 2.5 2.5 0 000-3.536z"/>
                     </svg>
                 </div>
                 <div>
-                    <h1 class="font-display font-bold text-base sm:text-lg text-slate-900 leading-tight">
-                        Sistem Gerak Manusia
-                    </h1>
-                    <p class="text-xs text-slate-500 hidden sm:block">Atlas Anatomi Rangka Interaktif • Biologi SMA/SMP</p>
+                    <div class="flex items-center gap-2">
+                        <h1 class="font-display font-bold text-base sm:text-lg text-white leading-tight">
+                            Sistem Gerak Manusia 3D
+                        </h1>
+                        <span class="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-teal-500/20 text-teal-300 border border-teal-500/30 rounded-full">
+                            360° Interactive
+                        </span>
+                    </div>
+                    <p class="text-xs text-slate-400 hidden sm:block">Atlas Anatomi Rangka Manusia • Biologi SMA/SMP</p>
                 </div>
             </div>
 
-            <!-- Statistik Ringkas Total Tulang (Desktop) -->
-            <div class="hidden lg:flex items-center gap-2 bg-slate-100 px-3.5 py-1.5 rounded-full border border-slate-200 text-xs font-medium">
-                <span class="text-slate-600">Total Dewasa:</span>
-                <span class="font-bold text-teal-700 bg-teal-100 px-2 py-0.5 rounded-full">206 Tulang</span>
-                <span class="text-slate-300">|</span>
-                <span class="text-indigo-700 font-semibold">80 Aksial</span>
-                <span class="text-slate-300">+</span>
-                <span class="text-amber-700 font-semibold">126 Apendikular</span>
+            <!-- Indikator Total 206 Tulang -->
+            <div class="hidden xl:flex items-center gap-2.5 bg-slate-800/80 px-4 py-1.5 rounded-full border border-slate-700/80 text-xs">
+                <span class="text-slate-400">Total Rangka Dewasa:</span>
+                <span class="font-bold text-teal-300 bg-teal-500/15 px-2.5 py-0.5 rounded-full border border-teal-500/30">206 Tulang</span>
+                <span class="text-slate-600">|</span>
+                <span class="text-indigo-300 font-semibold">80 Aksial</span>
+                <span class="text-slate-500">+</span>
+                <span class="text-amber-300 font-semibold">126 Apendikular</span>
             </div>
 
-            <!-- Tombol Aksi Header -->
+            <!-- Tombol Aksi -->
             <div class="flex items-center gap-2">
-                <button id="btnToggleQuiz" onclick="toggleQuizMode()" class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition shadow-sm">
+                <button id="btnToggleQuiz" onclick="toggleQuizMode()" class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/40 hover:bg-amber-500/25 transition">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
                     </svg>
-                    <span id="quizBtnText">Kuis Tebak Tulang</span>
+                    <span id="quizBtnText">Kuis Tebak Tulang 3D</span>
                 </button>
 
-                <button onclick="openInfoModal()" class="p-2 rounded-xl text-slate-500 hover:text-teal-700 hover:bg-slate-100 border border-transparent hover:border-slate-200 transition" title="Ringkasan Klasifikasi 206 Tulang">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                <button onclick="openInfoModal()" class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-medium bg-slate-800 text-slate-200 border border-slate-700 hover:bg-slate-700 transition" title="Tabel Rekapitulasi 206 Tulang">
+                    <svg class="w-4 h-4 text-teal-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
                     </svg>
+                    <span class="hidden md:inline">Tabel 206 Tulang</span>
                 </button>
             </div>
         </div>
     </header>
 
-    <!-- Banner Mode Kuis (Tersembunyi secara default) -->
-    <div id="quizBanner" class="hidden bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-white shadow-md">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col sm:flex-row items-center justify-between gap-3">
+    <!-- Banner Mode Kuis 3D -->
+    <div id="quizBanner" class="hidden bg-gradient-to-r from-amber-600 via-orange-600 to-amber-600 text-white border-b border-amber-400/30 shadow-lg">
+        <div class="max-w-[1440px] mx-auto px-4 sm:px-6 py-3 flex flex-col sm:flex-row items-center justify-between gap-3">
             <div class="flex items-center gap-3">
-                <span class="px-2.5 py-1 bg-white/20 backdrop-blur-sm rounded-lg text-xs font-bold uppercase tracking-wider">Mode Kuis</span>
+                <span class="px-2.5 py-1 bg-black/25 rounded-lg text-xs font-bold uppercase tracking-wider">Mode Kuis 3D</span>
                 <p class="text-sm sm:text-base font-medium">
-                    Klik pada gambar rangka untuk mencari: 
+                    Putar rangka & klik tulang: 
                     <strong id="quizTargetName" class="underline decoration-2 underline-offset-4 text-yellow-100 text-base sm:text-lg ml-1">Tulang Paha (Femur)</strong>
                 </p>
             </div>
-            <div class="flex items-center gap-3 self-end sm:self-auto">
-                <div class="bg-black/20 px-3 py-1 rounded-lg text-xs sm:text-sm font-semibold">
+            <div class="flex items-center gap-3">
+                <div class="bg-black/25 px-3 py-1 rounded-lg text-xs sm:text-sm font-semibold">
                     Skor: <span id="quizScore">0</span> / <span id="quizTotal">0</span>
                 </div>
-                <button onclick="nextQuizQuestion()" class="px-3 py-1.5 bg-white text-orange-600 hover:bg-orange-50 rounded-lg text-xs font-bold shadow-sm transition">
+                <button onclick="nextQuizQuestion()" class="px-3 py-1.5 bg-white text-orange-700 hover:bg-orange-50 rounded-lg text-xs font-bold shadow transition">
                     Lewati Soal →
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- Notifikasi Toast Feedback -->
-    <div id="toastNotification" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
-        <div id="toastContent" class="px-4 py-3 rounded-xl shadow-lg font-medium text-sm flex items-center gap-2.5 bg-slate-900 text-white">
+    <!-- Notifikasi Toast -->
+    <div id="toastNotification" class="fixed bottom-5 right-5 z-50 transform translate-y-24 opacity-0 transition-all duration-300 pointer-events-none">
+        <div id="toastContent" class="px-4 py-3 rounded-xl shadow-2xl font-medium text-xs sm:text-sm flex items-center gap-2.5 bg-slate-900 text-white border border-slate-700">
             <span id="toastIcon"></span>
             <span id="toastMessage">Pesan notifikasi</span>
         </div>
     </div>
 
-    <!-- Konten Utama 3 Kolom (Desktop) / Bertumpuk (Mobile) -->
-    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+    <!-- Layout Utama 3 Kolom -->
+    <main class="flex-1 max-w-[1440px] w-full mx-auto px-4 sm:px-6 py-5">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
 
-            <!-- KOLOM KIRI (3 Kolom): Daftar Tulang, Pencarian & Filter -->
-            <section class="lg:col-span-3 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col order-2 lg:order-1 lg:sticky lg:top-22">
-                <div class="p-4 border-b border-slate-100 bg-slate-50/60">
-                    <h2 class="font-display font-bold text-slate-800 text-sm uppercase tracking-wider mb-3 flex items-center justify-between">
-                        <span>Indeks Tulang Rangka</span>
-                        <span id="boneCountBadge" class="text-xs font-semibold bg-teal-100 text-teal-800 px-2 py-0.5 rounded-full">19 Bagian</span>
-                    </h2>
+            <!-- KOLOM KIRI (3 Kolom): Indeks & Filter Tulang -->
+            <section class="lg:col-span-3 bg-slate-900/90 rounded-2xl border border-slate-800 shadow-xl overflow-hidden flex flex-col order-2 lg:order-1 lg:sticky lg:top-20">
+                <div class="p-4 border-b border-slate-800 bg-slate-900">
+                    <div class="flex items-center justify-between mb-3">
+                        <h2 class="font-display font-bold text-slate-200 text-xs uppercase tracking-wider">
+                            Daftar Bagian Rangka
+                        </h2>
+                        <span id="boneCountBadge" class="text-[11px] font-semibold bg-teal-500/20 text-teal-300 border border-teal-500/30 px-2 py-0.5 rounded-full">
+                            20 Kelompok
+                        </span>
+                    </div>
 
-                    <!-- Input Pencarian -->
+                    <!-- Pencarian -->
                     <div class="relative mb-3">
-                        <input type="text" id="searchInput" oninput="filterBoneList()" placeholder="Cari nama / nama latin..." 
-                            class="w-full pl-9 pr-3 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition">
-                        <svg class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <input type="text" id="searchInput" oninput="filterBoneList()" placeholder="Cari nama tulang / latin..." 
+                            class="w-full pl-9 pr-3 py-2 text-sm bg-slate-950 text-slate-100 placeholder-slate-500 border border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition">
+                        <svg class="w-4 h-4 text-slate-500 absolute left-3 top-2.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                         </svg>
                     </div>
 
-                    <!-- Filter Kategori Rangka -->
-                    <div class="grid grid-cols-3 gap-1 bg-slate-200/70 p-1 rounded-xl text-xs font-semibold">
-                        <button onclick="setCategoryFilter('all')" id="filter-all" class="filter-btn py-1.5 px-2 rounded-lg bg-white text-teal-700 shadow-sm transition">
+                    <!-- Filter Kategori -->
+                    <div class="grid grid-cols-3 gap-1 bg-slate-950 p-1 rounded-xl text-xs font-semibold border border-slate-800">
+                        <button onclick="setCategoryFilter('all')" id="filter-all" class="filter-btn py-1.5 px-2 rounded-lg bg-teal-600 text-white shadow transition">
                             Semua
                         </button>
-                        <button onclick="setCategoryFilter('Aksial')" id="filter-Aksial" class="filter-btn py-1.5 px-2 rounded-lg text-slate-600 hover:text-slate-900 transition">
+                        <button onclick="setCategoryFilter('Aksial')" id="filter-Aksial" class="filter-btn py-1.5 px-2 rounded-lg text-slate-400 hover:text-white transition">
                             Aksial (80)
                         </button>
-                        <button onclick="setCategoryFilter('Apendikular')" id="filter-Apendikular" class="filter-btn py-1.5 px-2 rounded-lg text-slate-600 hover:text-slate-900 transition">
-                            Apendik. (126)
+                        <button onclick="setCategoryFilter('Apendikular')" id="filter-Apendikular" class="filter-btn py-1.5 px-2 rounded-lg text-slate-400 hover:text-white transition">
+                            Apend. (126)
                         </button>
                     </div>
                 </div>
 
-                <!-- Daftar Item Tulang Scrollable -->
-                <div id="boneListContainer" class="divide-y divide-slate-100 max-h-[420px] lg:max-h-[540px] overflow-y-auto">
-                    <!-- Diisi secara dinamis oleh JavaScript -->
+                <!-- List Tulang -->
+                <div id="boneListContainer" class="divide-y divide-slate-800/70 max-h-[380px] lg:max-h-[540px] overflow-y-auto">
+                    <!-- Diisi via JavaScript -->
                 </div>
             </section>
 
-            <!-- KOLOM TENGAH (5 Kolom): Kanvas Anatomi SVG Interaktif -->
-            <section class="lg:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col order-1 lg:order-2">
-                <!-- Toolbar Kanvas -->
-                <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
-                    <div class="flex items-center gap-2">
-                        <span class="w-2.5 h-2.5 rounded-full bg-teal-500 animate-pulse"></span>
-                        <span class="text-xs font-semibold text-slate-600">Tampak Anterior (Depan) • Klik tulang</span>
+            <!-- KOLOM TENGAH (5 Kolom): Viewport 3D Rangka Manusia Interaktif -->
+            <section class="lg:col-span-5 bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl overflow-hidden flex flex-col order-1 lg:order-2">
+                <!-- Toolbar Kamera 3D -->
+                <div class="px-3.5 py-2.5 border-b border-slate-800 bg-slate-900 flex flex-wrap items-center justify-between gap-2">
+                    <div class="flex items-center gap-1.5 text-xs text-slate-300 font-medium">
+                        <span class="w-2 h-2 rounded-full bg-teal-400 animate-ping"></span>
+                        <span>Seret: Putar 360° • Scroll: Zoom • Klik: Detail</span>
                     </div>
-                    <div class="flex items-center gap-1.5">
-                        <button onclick="zoomSvg(0.15)" class="p-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 text-xs font-bold" title="Perbesar">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
-                        </button>
-                        <button onclick="zoomSvg(-0.15)" class="p-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 text-xs font-bold" title="Perkecil">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20 12H4"/></svg>
-                        </button>
-                        <button onclick="resetZoom()" class="px-2 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 text-xs font-medium" title="Reset Ukuran">
-                            Reset
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Tooltip Melayang saat Hover di atas SVG -->
-                <div class="relative medical-grid-bg flex-1 flex items-center justify-center p-2 sm:p-4 min-h-[520px] sm:min-h-[640px] overflow-hidden select-none">
-                    <div id="hoverTooltip" class="hidden absolute top-3 left-3 z-20 bg-slate-900/90 backdrop-blur-sm text-white px-3 py-1.5 rounded-xl text-xs shadow-lg pointer-events-none border border-slate-700">
-                        <p id="tooltipTitle" class="font-bold text-teal-300">Nama Tulang</p>
-                        <p id="tooltipLatin" class="italic text-slate-300 text-[11px]">Nama Latin</p>
-                    </div>
-
-                    <!-- Legenda Warna Kecil -->
-                    <div class="absolute bottom-3 left-3 z-10 bg-white/90 backdrop-blur-sm border border-slate-200 px-3 py-2 rounded-xl text-[11px] text-slate-600 shadow-sm space-y-1">
-                        <div class="flex items-center gap-2">
-                            <span class="w-3 h-3 rounded-sm bg-[#f7f2e7] border border-[#64584c] inline-block"></span>
-                            <span>Tulang Normal</span>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <span class="w-3 h-3 rounded-sm bg-[#fde047] border border-[#b45309] inline-block"></span>
-                            <span>Sorot (Hover)</span>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <span class="w-3 h-3 rounded-sm bg-[#2dd4bf] border border-[#0f766e] inline-block"></span>
-                            <span>Terpilih (Aktif)</span>
-                        </div>
-                    </div>
-
-                    <!-- Wrapper Zoomable SVG -->
-                    <div id="svgZoomContainer" class="w-full h-full flex items-center justify-center transition-transform duration-200 ease-out">
-                        <!-- ILUSTRASI SVG ANATOMI RANGKA MANUSIA LENGKAP -->
-                        <svg id="skeletonSvg" viewBox="0 0 420 860" class="w-full max-w-[360px] sm:max-w-[390px] h-auto drop-shadow-sm" xmlns="http://www.w3.org/2000/svg">
-                            <defs>
-                                <!-- Gradien Halus untuk Kedalaman Tulang -->
-                                <linearGradient id="boneGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                                    <stop offset="0%" stop-color="#ede4d3"/>
-                                    <stop offset="50%" stop-color="#fbf8f3"/>
-                                    <stop offset="100%" stop-color="#e6dac6"/>
-                                </linearGradient>
-                            </defs>
-
-                            <!-- ========================================== -->
-                            <!-- 1. TULANG BELAKANG (COLUMNA VERTEBRALIS)   -->
-                            <!-- ========================================== -->
-                            <g id="bone-vertebrae" class="bone-group" data-bone="vertebrae" onclick="selectBone('vertebrae')" onmouseenter="showTooltip(event, 'vertebrae')" onmouseleave="hideTooltip()">
-                                <!-- Vertebrae Servikalis (Leher C1-C7) -->
-                                <rect x="199" y="112" width="22" height="7" rx="3"/>
-                                <rect x="198" y="120" width="24" height="7" rx="3"/>
-                                <rect x="197" y="128" width="26" height="7" rx="3"/>
-                                <rect x="197" y="136" width="26" height="7" rx="3"/>
-                                <rect x="196" y="144" width="28" height="7" rx="3"/>
-                                <!-- Vertebrae Torakalis (Punggung - terlihat di sela tulang dada & bawah) -->
-                                <rect x="196" y="255" width="28" height="9" rx="3"/>
-                                <rect x="195" y="266" width="30" height="9" rx="3"/>
-                                <!-- Vertebrae Lumbalis (Pinggang L1-L5) -->
-                                <rect x="194" y="277" width="32" height="11" rx="3.5"/>
-                                <rect x="193" y="290" width="34" height="11" rx="3.5"/>
-                                <rect x="192" y="303" width="36" height="11" rx="3.5"/>
-                                <rect x="192" y="316" width="36" height="11" rx="3.5"/>
-                                <rect x="193" y="329" width="34" height="11" rx="3.5"/>
-                                <!-- Sakrum (Tulang Kelangkang) & Koksigis (Tulang Ekor) -->
-                                <path d="M192 342 L228 342 L221 378 L210 388 L199 378 Z"/>
-                                <path d="M204 388 L216 388 L213 402 L207 402 Z"/>
-                            </g>
-
-                            <!-- ========================================== -->
-                            <!-- 2. TENGKORAK (CRANIUM & WAJAH)             -->
-                            <!-- ========================================== -->
-                            <g id="bone-cranium" class="bone-group" data-bone="cranium" onclick="selectBone('cranium')" onmouseenter="showTooltip(event, 'cranium')" onmouseleave="hideTooltip()">
-                                <!-- Kubah Kranium (Frontal, Parietal, Temporal) -->
-                                <path d="M174 56 C174 26, 246 26, 246 56 C246 72, 241 82, 237 89 L183 89 C179 82, 174 72, 174 56 Z"/>
-                                <!-- Sutura Koronalis (Garis detail tengkorak) -->
-                                <path d="M182 44 Q210 36 238 44" fill="none" stroke-width="1" opacity="0.5"/>
-                                <!-- Tulang Pipi (Zygomaticum) & Rahang Atas (Maxilla) -->
-                                <path d="M181 74 L177 88 L187 96 L192 104 L228 104 L233 96 L243 88 L239 74 Z"/>
-                                <!-- Rongga Mata (Orbita) -->
-                                <ellipse cx="196" cy="73" rx="10" ry="8" style="fill:#475569; stroke:#334155;"/>
-                                <ellipse cx="224" cy="73" rx="10" ry="8" style="fill:#475569; stroke:#334155;"/>
-                                <!-- Rongga Hidung (Cavum Nasi) -->
-                                <path d="M210 78 L205 91 L215 91 Z" style="fill:#475569; stroke:#334155;"/>
-                                <!-- Gigi Atas -->
-                                <path d="M196 104 L196 109 M201 104 L201 109 M206 104 L206 109 M210 104 L210 109 M214 104 L214 109 M219 104 L219 109 M224 104 L224 109" stroke-width="1.2"/>
-                                <!-- Rahang Bawah (Mandibula) -->
-                                <path d="M184 93 L188 113 L201 122 L219 122 L232 113 L236 93 L229 95 L226 110 L194 110 L191 95 Z"/>
-                            </g>
-
-                            <!-- ========================================== -->
-                            <!-- 3. TULANG BELIKAT (SCAPULA)                -->
-                            <!-- ========================================== -->
-                            <g id="bone-scapula" class="bone-group" data-bone="scapula" onclick="selectBone('scapula')" onmouseenter="showTooltip(event, 'scapula')" onmouseleave="hideTooltip()">
-                                <!-- Belikat Kanan (Sisi kiri gambar) -->
-                                <path d="M138 158 L174 164 L166 226 L146 212 Z"/>
-                                <!-- Belikat Kiri (Sisi kanan gambar) -->
-                                <path d="M282 158 L246 164 L254 226 L274 212 Z"/>
-                            </g>
-
-                            <!-- ========================================== -->
-                            <!-- 4. TULANG RUSUK (COSTAE) - 12 PASANG       -->
-                            <!-- ========================================== -->
-                            <g id="bone-ribs" class="bone-group" data-bone="ribs" onclick="selectBone('ribs')" onmouseenter="showTooltip(event, 'ribs')" onmouseleave="hideTooltip()">
-                                <!-- Rusuk Sisi Kanan Tubuh (Kiri Layar) - 1 s.d 10 -->
-                                <path d="M198 156 C165 154, 152 164, 156 172 C164 176, 184 172, 200 172 Z"/>
-                                <path d="M200 175 C160 174, 146 184, 150 193 C160 197, 184 191, 201 190 Z"/>
-                                <path d="M201 193 C156 193, 142 204, 146 214 C158 218, 184 210, 201 208 Z"/>
-                                <path d="M201 211 C154 212, 140 224, 145 234 C158 238, 184 228, 201 225 Z"/>
-                                <path d="M201 228 C154 230, 142 243, 148 253 C162 256, 186 244, 202 240 Z"/>
-                                <path d="M202 243 C158 247, 148 260, 155 269 C168 271, 188 258, 203 252 Z"/>
-                                <path d="M203 255 C164 261, 156 274, 164 282 C176 283, 192 269, 205 261 Z"/>
-                                <!-- Rusuk Melayang (11 & 12) -->
-                                <path d="M188 278 C170 282, 162 290, 166 295 C174 296, 184 288, 192 284 Z"/>
-                                <path d="M190 292 C176 296, 170 303, 174 307 C180 307, 186 301, 192 298 Z"/>
-
-                                <!-- Rusuk Sisi Kiri Tubuh (Kanan Layar) - 1 s.d 10 -->
-                                <path d="M222 156 C255 154, 268 164, 264 172 C256 176, 236 172, 220 172 Z"/>
-                                <path d="M220 175 C260 174, 274 184, 270 193 C260 197, 236 191, 219 190 Z"/>
-                                <path d="M219 193 C264 193, 278 204, 274 214 C262 218, 236 210, 219 208 Z"/>
-                                <path d="M219 211 C266 212, 280 224, 275 234 C262 238, 236 228, 219 225 Z"/>
-                                <path d="M219 228 C266 230, 278 243, 272 253 C258 256, 234 244, 218 240 Z"/>
-                                <path d="M218 243 C262 247, 272 260, 265 269 C252 271, 232 258, 217 252 Z"/>
-                                <path d="M217 255 C256 261, 264 274, 256 282 C244 283, 228 269, 215 261 Z"/>
-                                <!-- Rusuk Melayang (11 & 12) -->
-                                <path d="M232 278 C250 282, 258 290, 254 295 C246 296, 236 288, 228 284 Z"/>
-                                <path d="M230 292 C244 296, 250 303, 246 307 C240 307, 234 301, 228 298 Z"/>
-                            </g>
-
-                            <!-- ========================================== -->
-                            <!-- 5. TULANG DADA (STERNUM)                   -->
-                            <!-- ========================================== -->
-                            <g id="bone-sternum" class="bone-group" data-bone="sternum" onclick="selectBone('sternum')" onmouseenter="showTooltip(event, 'sternum')" onmouseleave="hideTooltip()">
-                                <!-- Manubrium Sterni (Hulu) -->
-                                <path d="M198 153 L222 153 L219 175 L201 175 Z"/>
-                                <!-- Corpus Sterni (Badan) -->
-                                <path d="M202 176 L218 176 L216 244 L204 244 Z"/>
-                                <!-- Processus Xiphoideus (Taju Pedang) -->
-                                <path d="M206 245 L214 245 L210 262 Z"/>
-                            </g>
-
-                            <!-- ========================================== -->
-                            <!-- 6. TULANG SELANGKA (CLAVICULA)             -->
-                            <!-- ========================================== -->
-                            <g id="bone-clavicle" class="bone-group" data-bone="clavicle" onclick="selectBone('clavicle')" onmouseenter="showTooltip(event, 'clavicle')" onmouseleave="hideTooltip()">
-                                <!-- Selangka Kanan -->
-                                <path d="M198 152 C180 146, 155 156, 134 152 C131 154, 132 159, 137 159 C156 162, 180 153, 198 158 Z"/>
-                                <!-- Selangka Kiri -->
-                                <path d="M222 152 C240 146, 265 156, 286 152 C289 154, 288 159, 283 159 C264 162, 240 153, 222 158 Z"/>
-                            </g>
-
-                            <!-- ========================================== -->
-                            <!-- 7. TULANG LENGAN ATAS (HUMERUS)            -->
-                            <!-- ========================================== -->
-                            <g id="bone-humerus" class="bone-group" data-bone="humerus" onclick="selectBone('humerus')" onmouseenter="showTooltip(event, 'humerus')" onmouseleave="hideTooltip()">
-                                <!-- Humerus Kanan (Kiri Layar) -->
-                                <path d="M132 160 C123 160, 118 168, 122 177 L110 268 C106 273, 108 281, 115 281 L126 281 C131 280, 132 273, 128 268 L137 177 C140 169, 138 161, 132 160 Z"/>
-                                <!-- Humerus Kiri (Kanan Layar) -->
-                                <path d="M288 160 C297 160, 302 168, 298 177 L310 268 C314 273, 312 281, 305 281 L294 281 C289 280, 288 273, 292 268 L283 177 C280 169, 282 161, 288 160 Z"/>
-                            </g>
-
-                            <!-- ========================================== -->
-                            <!-- 8. TULANG PENGUMPIL (RADIUS)               -->
-                            <!-- ========================================== -->
-                            <g id="bone-radius" class="bone-group" data-bone="radius" onclick="selectBone('radius')" onmouseenter="showTooltip(event, 'radius')" onmouseleave="hideTooltip()">
-                                <!-- Radius Kanan (Sisi lateral / ibu jari - luar) -->
-                                <path d="M108 284 L115 284 L103 386 L93 386 C92 380, 95 376, 97 372 Z"/>
-                                <!-- Radius Kiri (Sisi lateral / ibu jari - luar) -->
-                                <path d="M312 284 L305 284 L317 386 L327 386 C328 380, 325 376, 323 372 Z"/>
-                            </g>
-
-                            <!-- ========================================== -->
-                            <!-- 9. TULANG HASTA (ULNA)                     -->
-                            <!-- ========================================== -->
-                            <g id="bone-ulna" class="bone-group" data-bone="ulna" onclick="selectBone('ulna')" onmouseenter="showTooltip(event, 'ulna')" onmouseleave="hideTooltip()">
-                                <!-- Ulna Kanan (Sisi medial / kelingking - dalam) -->
-                                <path d="M118 282 L127 282 L114 386 L106 386 Z"/>
-                                <!-- Ulna Kiri (Sisi medial / kelingking - dalam) -->
-                                <path d="M302 282 L293 282 L306 386 L314 386 Z"/>
-                            </g>
-
-                            <!-- ========================================== -->
-                            <!-- 10. PERGELANGAN TANGAN (CARPAL)            -->
-                            <!-- ========================================== -->
-                            <g id="bone-carpal" class="bone-group" data-bone="carpal" onclick="selectBone('carpal')" onmouseenter="showTooltip(event, 'carpal')" onmouseleave="hideTooltip()">
-                                <!-- Carpal Kanan -->
-                                <rect x="93" y="388" width="21" height="12" rx="4"/>
-                                <!-- Carpal Kiri -->
-                                <rect x="306" y="388" width="21" height="12" rx="4"/>
-                            </g>
-
-                            <!-- ========================================== -->
-                            <!-- 11. TELAPAK TANGAN (METACARPAL)            -->
-                            <!-- ========================================== -->
-                            <g id="bone-metacarpal" class="bone-group" data-bone="metacarpal" onclick="selectBone('metacarpal')" onmouseenter="showTooltip(event, 'metacarpal')" onmouseleave="hideTooltip()">
-                                <!-- Metacarpal Kanan (5 tulang) -->
-                                <path d="M91 402 L86 416 M96 402 L93 422 M101 402 L100 424 M106 402 L106 422 M111 402 L112 419" stroke-width="3.2"/>
-                                <!-- Metacarpal Kiri (5 tulang) -->
-                                <path d="M329 402 L334 416 M324 402 L327 422 M319 402 L320 424 M314 402 L314 422 M309 402 L308 419" stroke-width="3.2"/>
-                            </g>
-
-                            <!-- ========================================== -->
-                            <!-- 12. JARI TANGAN (PHALANGES MANUS)          -->
-                            <!-- ========================================== -->
-                            <g id="bone-hand_phalanges" class="bone-group" data-bone="hand_phalanges" onclick="selectBone('hand_phalanges')" onmouseenter="showTooltip(event, 'hand_phalanges')" onmouseleave="hideTooltip()">
-                                <!-- Jari Kanan -->
-                                <path d="M85 419 L80 431 M92 425 L89 446 M100 427 L99 451 M106 425 L106 447 M112 422 L113 439" stroke-width="2.6"/>
-                                <!-- Jari Kiri -->
-                                <path d="M335 419 L340 431 M328 425 L331 446 M320 427 L321 451 M314 425 L314 447 M308 422 L307 439" stroke-width="2.6"/>
-                            </g>
-
-                            <!-- ========================================== -->
-                            <!-- 13. GELANG PANGGUL (PELVIS / COXAE)        -->
-                            <!-- ========================================== -->
-                            <g id="bone-pelvis" class="bone-group" data-bone="pelvis" onclick="selectBone('pelvis')" onmouseenter="showTooltip(event, 'pelvis')" onmouseleave="hideTooltip()">
-                                <!-- Tulang Usus (Ilium), Duduk (Ischium), Kemaluan (Pubis) Kanan & Kiri -->
-                                <path d="M192 342 C168 332, 146 346, 150 374 C153 392, 160 408, 174 414 C184 418, 194 406, 204 402 L216 402 C226 406, 236 418, 246 414 C260 408, 267 392, 270 374 C274 346, 252 332, 228 342 L221 378 L210 388 L199 378 Z"/>
-                                <!-- Foramen Obturatorium (Lubang Panggul) -->
-                                <ellipse cx="182" cy="396" rx="8" ry="10" style="fill:#f8fafc;"/>
-                                <ellipse cx="238" cy="396" rx="8" ry="10" style="fill:#f8fafc;"/>
-                            </g>
-
-                            <!-- ========================================== -->
-                            <!-- 14. TULANG PAHA (FEMUR)                    -->
-                            <!-- ========================================== -->
-                            <g id="bone-femur" class="bone-group" data-bone="femur" onclick="selectBone('femur')" onmouseenter="showTooltip(event, 'femur')" onmouseleave="hideTooltip()">
-                                <!-- Femur Kanan -->
-                                <path d="M164 398 C156 394, 148 400, 150 410 L165 562 C161 568, 163 578, 172 578 L188 578 C195 578, 196 568, 191 562 L173 414 L182 406 C185 400, 178 394, 172 398 Z"/>
-                                <!-- Femur Kiri -->
-                                <path d="M256 398 C264 394, 272 400, 270 410 L255 562 C259 568, 257 578, 248 578 L232 578 C225 578, 224 568, 229 562 L247 414 L238 406 C235 400, 242 394, 248 398 Z"/>
-                            </g>
-
-                            <!-- ========================================== -->
-                            <!-- 15. TULANG TEMPURUNG LUTUT (PATELLA)       -->
-                            <!-- ========================================== -->
-                            <g id="bone-patella" class="bone-group" data-bone="patella" onclick="selectBone('patella')" onmouseenter="showTooltip(event, 'patella')" onmouseleave="hideTooltip()">
-                                <!-- Patella Kanan -->
-                                <ellipse cx="179" cy="574" rx="8.5" ry="10"/>
-                                <!-- Patella Kiri -->
-                                <ellipse cx="241" cy="574" rx="8.5" ry="10"/>
-                            </g>
-
-                            <!-- ========================================== -->
-                            <!-- 16. TULANG KERING (TIBIA)                  -->
-                            <!-- ========================================== -->
-                            <g id="bone-tibia" class="bone-group" data-bone="tibia" onclick="selectBone('tibia')" onmouseenter="showTooltip(event, 'tibia')" onmouseleave="hideTooltip()">
-                                <!-- Tibia Kanan (Tulang besar bagian dalam/medial) -->
-                                <path d="M168 586 L191 586 L188 742 C190 747, 187 752, 181 752 L174 752 C169 752, 168 746, 171 741 Z"/>
-                                <!-- Tibia Kiri (Tulang besar bagian dalam/medial) -->
-                                <path d="M252 586 L229 586 L232 742 C230 747, 233 752, 239 752 L246 752 C251 752, 252 746, 249 741 Z"/>
-                            </g>
-
-                            <!-- ========================================== -->
-                            <!-- 17. TULANG BETIS (FIBULA)                  -->
-                            <!-- ========================================== -->
-                            <g id="bone-fibula" class="bone-group" data-bone="fibula" onclick="selectBone('fibula')" onmouseenter="showTooltip(event, 'fibula')" onmouseleave="hideTooltip()">
-                                <!-- Fibula Kanan (Tulang ramping bagian luar/lateral) -->
-                                <path d="M161 592 L166 592 L166 750 L159 750 Z"/>
-                                <!-- Fibula Kiri (Tulang ramping bagian luar/lateral) -->
-                                <path d="M259 592 L254 592 L254 750 L261 750 Z"/>
-                            </g>
-
-                            <!-- ========================================== -->
-                            <!-- 18. PERGELANGAN KAKI (TARSAL)              -->
-                            <!-- ========================================== -->
-                            <g id="bone-tarsal" class="bone-group" data-bone="tarsal" onclick="selectBone('tarsal')" onmouseenter="showTooltip(event, 'tarsal')" onmouseleave="hideTooltip()">
-                                <!-- Tarsal Kanan -->
-                                <path d="M162 753 L187 753 L189 772 L159 772 Z"/>
-                                <!-- Tarsal Kiri -->
-                                <path d="M258 753 L233 753 L231 772 L261 772 Z"/>
-                            </g>
-
-                            <!-- ========================================== -->
-                            <!-- 19. TELAPAK KAKI (METATARSAL) & JARI KAKI  -->
-                            <!-- ========================================== -->
-                            <g id="bone-metatarsal" class="bone-group" data-bone="metatarsal" onclick="selectBone('metatarsal')" onmouseenter="showTooltip(event, 'metatarsal')" onmouseleave="hideTooltip()">
-                                <!-- Metatarsal Kanan -->
-                                <path d="M161 774 L156 792 M167 774 L164 794 M173 774 L172 795 M179 774 L180 795 M186 774 L188 794" stroke-width="3.2"/>
-                                <!-- Metatarsal Kiri -->
-                                <path d="M259 774 L264 792 M253 774 L256 794 M247 774 L248 795 M241 774 L240 795 M234 774 L232 794" stroke-width="3.2"/>
-                            </g>
-
-                            <g id="bone-foot_phalanges" class="bone-group" data-bone="foot_phalanges" onclick="selectBone('foot_phalanges')" onmouseenter="showTooltip(event, 'foot_phalanges')" onmouseleave="hideTooltip()">
-                                <!-- Phalanges Pedis Kanan -->
-                                <path d="M155 795 L152 805 M163 797 L161 808 M172 798 L171 810 M180 798 L180 810 M188 797 L190 811" stroke-width="2.8"/>
-                                <!-- Phalanges Pedis Kiri -->
-                                <path d="M265 795 L268 805 M257 797 L259 808 M248 798 L249 810 M240 798 L240 810 M232 797 L230 811" stroke-width="2.8"/>
-                            </g>
+                    
+                    <!-- Kontrol Putar Otomatis -->
+                    <button id="btnAutoRotate" onclick="toggleAutoRotate()" class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700 transition">
+                        <svg id="autoRotateIcon" class="w-3.5 h-3.5 text-teal-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                         </svg>
+                        <span id="autoRotateText">Putar 360°: OFF</span>
+                    </button>
+                </div>
+
+                <!-- Area Kanvas WebGL Three.js -->
+                <div id="canvas-container" class="relative h-[540px] sm:h-[640px]">
+                    <!-- Tooltip Hover 3D Melayang Mengikuti Kursor -->
+                    <div id="tooltip3D" class="hidden fixed z-40 pointer-events-none bg-slate-950/90 backdrop-blur-md border border-teal-500/50 text-white px-3 py-2 rounded-xl shadow-2xl text-xs transform -translate-x-1/2 -translate-y-full -mt-3">
+                        <p id="tt3DName" class="font-bold text-teal-300">Nama Tulang</p>
+                        <p id="tt3DLatin" class="italic text-slate-300 text-[11px]">Nama Latin</p>
+                        <p id="tt3DCount" class="text-[10px] text-amber-300 font-semibold mt-0.5">Jumlah</p>
+                    </div>
+
+                    <!-- Indikator Loading Awal -->
+                    <div id="loadingOverlay" class="absolute inset-0 z-20 bg-slate-950 flex flex-col items-center justify-center gap-3 text-slate-300">
+                        <div class="w-10 h-10 border-4 border-teal-500/30 border-t-teal-400 rounded-full animate-spin"></div>
+                        <p class="text-xs font-medium tracking-wide">Membangun Model Anatomi Rangka 3D...</p>
+                    </div>
+
+                    <!-- Kontrol Sudut Pandang Kamera Cepat (Overlay Bawah) -->
+                    <div class="absolute bottom-3 left-3 right-3 z-10 flex flex-wrap items-center justify-center gap-1.5 bg-slate-950/75 backdrop-blur-md p-2 rounded-xl border border-slate-800/90">
+                        <button onclick="setCameraPreset('front')" class="px-2.5 py-1.5 rounded-lg bg-slate-800/90 hover:bg-teal-600 text-slate-200 hover:text-white text-xs font-semibold transition">
+                            Depan
+                        </button>
+                        <button onclick="setCameraPreset('back')" class="px-2.5 py-1.5 rounded-lg bg-slate-800/90 hover:bg-teal-600 text-slate-200 hover:text-white text-xs font-semibold transition">
+                            Belakang
+                        </button>
+                        <button onclick="setCameraPreset('right')" class="px-2.5 py-1.5 rounded-lg bg-slate-800/90 hover:bg-teal-600 text-slate-200 hover:text-white text-xs font-semibold transition">
+                            Samping Kanan
+                        </button>
+                        <button onclick="setCameraPreset('left')" class="px-2.5 py-1.5 rounded-lg bg-slate-800/90 hover:bg-teal-600 text-slate-200 hover:text-white text-xs font-semibold transition">
+                            Samping Kiri
+                        </button>
+                        <button onclick="setCameraPreset('top')" class="px-2.5 py-1.5 rounded-lg bg-slate-800/90 hover:bg-teal-600 text-slate-200 hover:text-white text-xs font-semibold transition">
+                            Atas
+                        </button>
+                        <button onclick="setCameraPreset('reset')" class="px-2.5 py-1.5 rounded-lg bg-teal-600/20 border border-teal-500/40 hover:bg-teal-600 text-teal-300 hover:text-white text-xs font-semibold transition">
+                            Reset View
+                        </button>
                     </div>
                 </div>
             </section>
 
-            <!-- KOLOM KANAN (4 Kolom): Panel Informasi Detail Tulang -->
-            <section class="lg:col-span-4 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col order-3 lg:sticky lg:top-22">
-                <!-- Header Kartu Detail -->
-                <div class="bg-gradient-to-br from-teal-700 via-teal-600 to-cyan-700 p-5 text-white">
-                    <div class="flex items-center justify-between gap-2 mb-2">
-                        <span id="detailCategoryBadge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-white/20 backdrop-blur-sm uppercase tracking-wider">
+            <!-- KOLOM KANAN (4 Kolom): Panel Penjelasan Biologi Lengkap -->
+            <section class="lg:col-span-4 bg-slate-900/90 rounded-2xl border border-slate-800 shadow-xl overflow-hidden flex flex-col order-3 lg:sticky lg:top-20">
+                <!-- Header Kartu Tulang -->
+                <div class="bg-gradient-to-br from-teal-900 via-slate-900 to-cyan-950 p-5 border-b border-slate-800">
+                    <div class="flex items-center justify-between gap-2 mb-2.5">
+                        <span id="detailCategoryBadge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-teal-500/20 text-teal-300 border border-teal-500/30 uppercase tracking-wider">
                             Rangka Aksial
                         </span>
-                        <span id="detailShapeBadge" class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-black/20 text-teal-100">
+                        <span id="detailShapeBadge" class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-800 text-slate-300 border border-slate-700">
                             Tulang Pipih & Tidak Beraturan
                         </span>
                     </div>
-                    <h2 id="detailName" class="font-display font-extrabold text-2xl sm:text-3xl tracking-tight leading-tight">
+                    <h2 id="detailName" class="font-display font-extrabold text-2xl sm:text-3xl text-white tracking-tight leading-tight">
                         Tulang Tengkorak
                     </h2>
-                    <p id="detailLatin" class="text-teal-100 italic font-medium text-sm sm:text-base mt-1 flex items-center gap-1.5">
+                    <p id="detailLatin" class="text-teal-300 italic font-medium text-sm sm:text-base mt-1 flex items-center gap-1.5">
                         <svg class="w-4 h-4 shrink-0 opacity-80" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
                         </svg>
@@ -577,58 +273,58 @@
                     </p>
                 </div>
 
-                <!-- Konten Kartu Detail -->
-                <div class="p-5 space-y-5">
-                    <!-- Kotak Informasi Jumlah Tulang -->
-                    <div class="bg-teal-50/80 border border-teal-200/80 rounded-xl p-4">
-                        <div class="flex items-center justify-between mb-1.5">
-                            <span class="text-xs font-bold uppercase tracking-wider text-teal-800">Jumlah Tulang</span>
-                            <span id="detailCountMain" class="text-lg font-display font-extrabold text-teal-700 bg-white px-3 py-0.5 rounded-lg border border-teal-200 shadow-sm">
+                <!-- Isi Informasi Detail -->
+                <div class="p-5 space-y-4">
+                    <!-- Kotak Jumlah Tulang -->
+                    <div class="bg-slate-950/90 border border-teal-500/30 rounded-xl p-4">
+                        <div class="flex items-center justify-between gap-2 mb-1.5">
+                            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Jumlah Tulang</span>
+                            <span id="detailCountMain" class="text-base sm:text-lg font-display font-extrabold text-teal-300 bg-teal-500/15 px-3 py-0.5 rounded-lg border border-teal-500/30">
                                 22 Tulang (+7 Pendukung)
                             </span>
                         </div>
-                        <p id="detailCountBreakdown" class="text-xs sm:text-sm text-slate-700 leading-relaxed mt-2">
-                            Terdiri dari 8 tulang tempurung kepala (kranium) dan 14 tulang wajah. Ditambah 6 tulang pendengaran (osikula) serta 1 tulang lidah (hyoid) sehingga total kelompok kepala adalah 29 tulang.
+                        <p id="detailCountBreakdown" class="text-xs sm:text-sm text-slate-300 leading-relaxed mt-2">
+                            Terdiri dari 8 tulang tempurung kepala (kranium) dan 14 tulang wajah.
                         </p>
                     </div>
 
-                    <!-- Rincian Bagian Penyusun (Sub-bones) -->
+                    <!-- Rincian Penyusun & Nama Latin -->
                     <div>
                         <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-1.5">
-                            <svg class="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <svg class="w-4 h-4 text-teal-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h7"/>
                             </svg>
-                            Rincian Bagian & Nama Latin
+                            Rincian Tulang Penyusun & Nama Latin
                         </h3>
-                        <ul id="detailSubBones" class="space-y-1.5 text-xs sm:text-sm text-slate-700 bg-slate-50 p-3.5 rounded-xl border border-slate-100">
+                        <ul id="detailSubBones" class="space-y-1.5 text-xs sm:text-sm text-slate-300 bg-slate-950/70 p-3.5 rounded-xl border border-slate-800">
                             <!-- Diisi via JS -->
                         </ul>
                     </div>
 
-                    <!-- Letak Anatomis & Fungsi Utama -->
+                    <!-- Letak & Fungsi Anatomis -->
                     <div class="space-y-3">
                         <div>
                             <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Letak Anatomis</h3>
-                            <p id="detailLocation" class="text-sm text-slate-700 leading-relaxed">
-                                Terletak di bagian paling atas (superior) dari kerangka aksial, bertumpu pada ruas pertama tulang leher (atlas).
+                            <p id="detailLocation" class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                                Bagian paling atas dari kerangka tubuh manusia.
                             </p>
                         </div>
 
                         <div>
                             <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Fungsi Utama dalam Sistem Gerak</h3>
-                            <p id="detailFunction" class="text-sm text-slate-700 leading-relaxed">
-                                Melindungi otak yang lunak serta organ indra vital (mata, telinga dalam, hidung, lidah), membentuk struktur wajah, dan menyediakan tempat melekatnya otot-otot ekspresi wajah serta otot pengunyah.
+                            <p id="detailFunction" class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                                Melindungi otak dan organ indra.
                             </p>
                         </div>
                     </div>
 
-                    <!-- Navigasi Sebelumnya / Selanjutnya -->
-                    <div class="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
-                        <button onclick="navigateBone(-1)" class="flex-1 py-2 px-3 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition flex items-center justify-center gap-1">
-                            ← Tulang Sebelumnya
+                    <!-- Tombol Navigasi Antar Tulang -->
+                    <div class="pt-3 border-t border-slate-800 flex items-center justify-between gap-2">
+                        <button onclick="navigateBone(-1)" class="flex-1 py-2.5 px-3 rounded-xl bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-200 hover:bg-slate-700 transition">
+                            ← Sebelumnya
                         </button>
-                        <button onclick="navigateBone(1)" class="flex-1 py-2 px-3 rounded-xl bg-teal-600 text-xs font-semibold text-white hover:bg-teal-700 transition flex items-center justify-center gap-1 shadow-sm">
-                            Tulang Berikutnya →
+                        <button onclick="navigateBone(1)" class="flex-1 py-2.5 px-3 rounded-xl bg-teal-600 text-xs font-semibold text-white hover:bg-teal-500 transition shadow-lg shadow-teal-600/20">
+                            Berikutnya →
                         </button>
                     </div>
                 </div>
@@ -636,82 +332,70 @@
         </div>
     </main>
 
-    <!-- Footer -->
-    <footer class="bg-white border-t border-slate-200 mt-10">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
-            <p>Media Pembelajaran Biologi • Materi Sistem Gerak pada Manusia (Rangka Manusia)</p>
-            <div class="flex items-center gap-4">
-                <button onclick="openInfoModal()" class="text-teal-600 hover:underline font-medium">Tabel Rekapitulasi 206 Tulang</button>
-                <span>•</span>
-                <span>Siap untuk GitHub Pages</span>
-            </div>
-        </div>
-    </footer>
-
-    <!-- Modal Ringkasan 206 Tulang Manusia Dewasa -->
-    <div id="infoModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-fadeIn">
-            <div class="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
+    <!-- Modal Tabel Rekapitulasi 206 Tulang -->
+    <div id="infoModal" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+            <div class="px-6 py-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
                 <div>
-                    <h3 class="font-display font-bold text-lg">Rekapitulasi 206 Tulang Rangka Manusia Dewasa</h3>
-                    <p class="text-xs text-slate-400">Pembagian Rangka Aksial (80 Tulang) dan Rangka Apendikular (126 Tulang)</p>
+                    <h3 class="font-display font-bold text-lg text-white">Rekapitulasi 206 Tulang Manusia Dewasa</h3>
+                    <p class="text-xs text-slate-400">Rangka Aksial (80 Tulang) + Rangka Apendikular (126 Tulang)</p>
                 </div>
-                <button onclick="closeInfoModal()" class="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition">
+                <button onclick="closeInfoModal()" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
             
             <div class="p-6 overflow-y-auto space-y-5 text-sm">
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <!-- Kotak Aksial -->
-                    <div class="border border-indigo-200 bg-indigo-50/50 rounded-xl p-4">
-                        <div class="flex items-center justify-between mb-2">
-                            <h4 class="font-bold text-indigo-900">1. Rangka Aksial (Sumbu Tubuh)</h4>
+                    <div class="border border-indigo-500/30 bg-indigo-950/30 rounded-xl p-4">
+                        <div class="flex items-center justify-between mb-2.5">
+                            <h4 class="font-bold text-indigo-300">1. Rangka Aksial (Sumbu Tubuh)</h4>
                             <span class="px-2.5 py-0.5 bg-indigo-600 text-white text-xs font-bold rounded-full">80 Tulang</span>
                         </div>
-                        <ul class="space-y-1.5 text-xs text-slate-700">
-                            <li class="flex justify-between"><span>• Tengkorak (Kranium 8 + Wajah 14)</span> <strong>22</strong></li>
-                            <li class="flex justify-between"><span>• Tulang Pendengaran (Osikula)</span> <strong>6</strong></li>
-                            <li class="flex justify-between"><span>• Tulang Lidah (Hyoid)</span> <strong>1</strong></li>
-                            <li class="flex justify-between"><span>• Tulang Belakang (Vertebrae)</span> <strong>26</strong></li>
-                            <li class="flex justify-between"><span>• Tulang Dada (Sternum)</span> <strong>1</strong></li>
-                            <li class="flex justify-between"><span>• Tulang Rusuk (Costae - 12 pasang)</span> <strong>24</strong></li>
+                        <ul class="space-y-1.5 text-xs text-slate-300">
+                            <li class="flex justify-between"><span>• Tengkorak (Kranium 8 + Wajah 14)</span> <strong class="text-white">22</strong></li>
+                            <li class="flex justify-between"><span>• Tulang Pendengaran (Osikula)</span> <strong class="text-white">6</strong></li>
+                            <li class="flex justify-between"><span>• Tulang Lidah (Hyoid)</span> <strong class="text-white">1</strong></li>
+                            <li class="flex justify-between"><span>• Tulang Belakang (Vertebrae)</span> <strong class="text-white">26</strong></li>
+                            <li class="flex justify-between"><span>• Tulang Dada (Sternum)</span> <strong class="text-white">1</strong></li>
+                            <li class="flex justify-between"><span>• Tulang Rusuk (Costae - 12 pasang)</span> <strong class="text-white">24</strong></li>
                         </ul>
                     </div>
 
-                    <!-- Kotak Apendikular -->
-                    <div class="border border-amber-200 bg-amber-50/50 rounded-xl p-4">
-                        <div class="flex items-center justify-between mb-2">
-                            <h4 class="font-bold text-amber-900">2. Rangka Apendikular (Alat Gerak)</h4>
+                    <div class="border border-amber-500/30 bg-amber-950/30 rounded-xl p-4">
+                        <div class="flex items-center justify-between mb-2.5">
+                            <h4 class="font-bold text-amber-300">2. Rangka Apendikular (Alat Gerak)</h4>
                             <span class="px-2.5 py-0.5 bg-amber-600 text-white text-xs font-bold rounded-full">126 Tulang</span>
                         </div>
-                        <ul class="space-y-1.5 text-xs text-slate-700">
-                            <li class="flex justify-between"><span>• Gelang Bahu (2 Selangka + 2 Belikat)</span> <strong>4</strong></li>
-                            <li class="flex justify-between"><span>• Lengan (2 Humerus, 2 Radius, 2 Ulna)</span> <strong>6</strong></li>
-                            <li class="flex justify-between"><span>• Tangan (16 Carpal, 10 Metacarpal, 28 Phalanges)</span> <strong>54</strong></li>
-                            <li class="flex justify-between"><span>• Gelang Panggul (Pelvis / Coxae)</span> <strong>2</strong></li>
-                            <li class="flex justify-between"><span>• Tungkai (2 Femur, 2 Patella, 2 Tibia, 2 Fibula)</span> <strong>8</strong></li>
-                            <li class="flex justify-between"><span>• Kaki (14 Tarsal, 10 Metatarsal, 28 Phalanges)</span> <strong>52</strong></li>
+                        <ul class="space-y-1.5 text-xs text-slate-300">
+                            <li class="flex justify-between"><span>• Gelang Bahu (2 Selangka + 2 Belikat)</span> <strong class="text-white">4</strong></li>
+                            <li class="flex justify-between"><span>• Lengan (2 Humerus, 2 Radius, 2 Ulna)</span> <strong class="text-white">6</strong></li>
+                            <li class="flex justify-between"><span>• Tangan (16 Carpal, 10 Metacarpal, 28 Phalanges)</span> <strong class="text-white">54</strong></li>
+                            <li class="flex justify-between"><span>• Gelang Panggul (Pelvis / Coxae)</span> <strong class="text-white">2</strong></li>
+                            <li class="flex justify-between"><span>• Tungkai (2 Femur, 2 Patella, 2 Tibia, 2 Fibula)</span> <strong class="text-white">8</strong></li>
+                            <li class="flex justify-between"><span>• Kaki (14 Tarsal, 10 Metatarsal, 28 Phalanges)</span> <strong class="text-white">52</strong></li>
                         </ul>
                     </div>
                 </div>
 
-                <div class="bg-slate-100 p-4 rounded-xl text-xs text-slate-600 leading-relaxed">
-                    <strong>Catatan Biologi:</strong> Bayi yang baru lahir memiliki sekitar <strong>270 hingga 300 tulang</strong>. Seiring pertumbuhan menuju dewasa, beberapa tulang mengalami proses osifikasi dan fusi (penggabungan)—seperti pada tulang tengkorak, sakrum, tulang ekor, dan tulang panggul—sehingga jumlahnya menjadi <strong>206 tulang</strong> pada manusia dewasa.
+                <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl text-xs text-slate-300 leading-relaxed">
+                    <strong class="text-teal-300">Fakta Biologi:</strong> Saat bayi baru lahir, tubuh memiliki sekitar <strong>270–300 tulang</strong>. Seiring proses osifikasi (penulangan) dan fusi (penggabungan tulang) hingga dewasa—seperti pada tulang tengkorak, sakrum, tulang ekor, dan panggul—jumlahnya menyatu menjadi tepat <strong>206 tulang</strong>.
                 </div>
             </div>
 
-            <div class="px-6 py-3 bg-slate-50 border-t border-slate-200 flex justify-end">
-                <button onclick="closeInfoModal()" class="px-4 py-2 bg-teal-600 text-white text-xs font-bold rounded-xl hover:bg-teal-700 transition">
-                    Tutup Ringkasan
+            <div class="px-6 py-3 bg-slate-950 border-t border-slate-800 flex justify-end">
+                <button onclick="closeInfoModal()" class="px-4 py-2 bg-teal-600 text-white text-xs font-bold rounded-xl hover:bg-teal-500 transition">
+                    Tutup Tabel
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- JAVASCRIPT DATA ANATOMI & LOGIKA INTERAKTIF -->
+    <!-- ===================================================================== -->
+    <!-- SCRIPT DATABASE BIOLOGI & ENGINE 3D ANATOMI RANGKA (THREE.JS)          -->
+    <!-- ===================================================================== -->
     <script>
-        // Database Lengkap Anatomi Tulang Manusia (Total = 206 Tulang Dewasa)
+        // 1. DATABASE LENGKAP 20 KELOMPOK TULANG (TOTAL = 206 TULANG DEWASA)
         const BONES_DATA = [
             {
                 id: 'cranium',
@@ -720,14 +404,15 @@
                 category: 'Aksial',
                 shape: 'Tulang Pipih & Tidak Beraturan',
                 countMain: '22 Tulang (+7 Pendukung)',
-                countBreakdown: 'Terdiri dari 8 tulang tempurung kepala (kranium) dan 14 tulang wajah. Jika digabung dengan 6 tulang pendengaran (osikula) dan 1 tulang hyoid, total kelompok kepala berjumlah 29 tulang.',
+                countBreakdown: 'Terdiri dari 8 tulang tempurung kepala (kranium) dan 14 tulang wajah. Jika ditambah 6 tulang pendengaran (osikula) serta 1 tulang lidah (hyoid), total kelompok kepala berjumlah 29 tulang.',
                 subBones: [
                     '<strong>Kranium (8):</strong> Frontal (1), Parietal (2), Temporal (2), Oksipital (1), Sfenoid (1), Etmoid (1)',
                     '<strong>Wajah (14):</strong> Maksila (2), Mandibula (1), Zigomatik (2), Nasal (2), Lakrimal (2), Palatina (2), Konka nasal inferior (2), Vomer (1)',
                     '<strong>Pendukung (7):</strong> Maleus (2), Inkus (2), Stapes (2), Hyoid (1)'
                 ],
                 location: 'Bagian paling atas (superior) dari kerangka tubuh manusia, bertumpu di atas ruas tulang leher pertama (tulang atlas).',
-                function: 'Melindungi otak dari benturan fisik, melindungi organ indra utama (mata, telinga dalam, hidung, lidah), serta menjadi tempat melekatnya otot wajah dan rahang untuk mengunyah.'
+                function: 'Melindungi otak dari benturan fisik, melindungi organ indra utama (mata, telinga dalam, hidung, lidah), serta menjadi tempat melekatnya otot wajah dan rahang untuk mengunyah.',
+                focusY: 2.35
             },
             {
                 id: 'vertebrae',
@@ -736,16 +421,17 @@
                 category: 'Aksial',
                 shape: 'Tulang Tidak Beraturan (Irregular)',
                 countMain: '26 Ruas (Dewasa)',
-                countBreakdown: 'Pada anak-anak berjumlah 33 ruas, namun pada orang dewasa 5 ruas sakrum menyatu menjadi 1 dan 4 ruas ekor menyatu menjadi 1 sehingga totalnya 26 tulang.',
+                countBreakdown: 'Pada masa anak-anak berjumlah 33 ruas, namun pada orang dewasa 5 ruas sakrum menyatu menjadi 1 dan 4 ruas tulang ekor menyatu menjadi 1 sehingga totalnya 26 tulang.',
                 subBones: [
                     '<strong>Tulang Leher (Vertebrae Cervicales):</strong> 7 ruas (C1–C7)',
                     '<strong>Tulang Punggung (Vertebrae Thoracicae):</strong> 12 ruas (T1–T12)',
                     '<strong>Tulang Pinggang (Vertebrae Lumbales):</strong> 5 ruas (L1–L5)',
-                    '<strong>Tulang Kelangkang (Os Sacrum):</strong> 1 tulang (gabungan 5 ruas)',
-                    '<strong>Tulang Ekor (Os Coccygis):</strong> 1 tulang (gabungan 4 ruas)'
+                    '<strong>Tulang Kelangkang (Os Sacrum):</strong> 1 tulang (fusi 5 ruas)',
+                    '<strong>Tulang Ekor (Os Coccygis):</strong> 1 tulang (fusi 4 ruas)'
                 ],
-                location: 'Membentang memanjang di bagian tengah belakang tubuh (dorsal) mulai dari dasar tengkorak hingga ke tulang panggul.',
-                function: 'Menopang berat kepala dan batang tubuh, menjaga postur tubuh tetap tegak, memungkinkan pergerakan membungkuk/memutar, serta melindungi sumsum tulang belakang (medula spinalis).'
+                location: 'Membentang vertikal di bagian tengah belakang tubuh (dorsal) dari dasar tengkorak hingga tulang panggul.',
+                function: 'Menopang berat kepala dan batang tubuh, menjaga postur tubuh tetap tegak, memungkinkan gerakan membungkuk/memutar, dan melindungi sumsum tulang belakang.',
+                focusY: 1.55
             },
             {
                 id: 'sternum',
@@ -753,15 +439,16 @@
                 latin: 'Sternum',
                 category: 'Aksial',
                 shape: 'Tulang Pipih (Ossa Plana)',
-                countMain: '1 Tulang (3 Bagian)',
-                countBreakdown: 'Merupakan 1 tulang pipih panjang di bagian tengah dada yang tersusun atas 3 segmen utama yang menyatu.',
+                countMain: '1 Tulang (3 Segmen)',
+                countBreakdown: 'Merupakan 1 tulang pipih memanjang di tengah dada yang terdiri dari 3 segmen menyatu.',
                 subBones: [
-                    '<strong>Hulu Tulang Dada (Manubrium Sterni):</strong> bagian atas tempat melekatnya selangka dan rusuk ke-1',
-                    '<strong>Badan Tulang Dada (Corpus Sterni):</strong> bagian tengah tempat melekatnya tulang rusuk ke-2 hingga ke-7',
-                    '<strong>Taju Pedang (Processus Xiphoideus):</strong> ujung bawah yang tersusun atas tulang rawan pada masa muda'
+                    '<strong>Hulu (Manubrium Sterni):</strong> bersendi dengan tulang selangka dan rusuk ke-1',
+                    '<strong>Badan (Corpus Sterni):</strong> tempat melekatnya tulang rusuk ke-2 hingga ke-7',
+                    '<strong>Taju Pedang (Processus Xiphoideus):</strong> ujung bawah tempat melekatnya otot diafragma'
                 ],
                 location: 'Terletak tepat di garis tengah bagian depan rongga dada (anterior toraks).',
-                function: 'Melindungi organ vital di rongga dada seperti jantung, paru-paru, dan pembuluh darah besar (aorta), serta menjadi titik tumpu perlekatan tulang rusuk sejati.'
+                function: 'Melindungi jantung, paru-paru, dan pembuluh darah besar (aorta), serta menjadi titik tumpu perlekatan tulang rusuk sejati.',
+                focusY: 1.72
             },
             {
                 id: 'ribs',
@@ -770,14 +457,15 @@
                 category: 'Aksial',
                 shape: 'Tulang Pipih Melengkung',
                 countMain: '24 Tulang (12 Pasang)',
-                countBreakdown: 'Terdiri dari 12 pasang tulang rusuk simetris di sisi kiri dan kanan yang melingkari rongga dada.',
+                countBreakdown: 'Terdiri dari 12 pasang tulang rusuk simetris di sisi kanan dan kiri yang melingkari rongga dada.',
                 subBones: [
-                    '<strong>Rusuk Sejati (Costae Verae):</strong> 7 pasang (14 tulang), melekat langsung pada tulang dada',
-                    '<strong>Rusuk Palsu (Costae Spuriae):</strong> 3 pasang (6 tulang), melekat pada tulang rawan rusuk di atasnya',
-                    '<strong>Rusuk Melayang (Costae Fluctuantes):</strong> 2 pasang (4 tulang), ujung depannya bebas tidak melekat pada tulang dada'
+                    '<strong>Rusuk Sejati (Costae Verae):</strong> 7 pasang (14 tulang), melekat langsung ke tulang dada',
+                    '<strong>Rusuk Palsu (Costae Spuriae):</strong> 3 pasang (6 tulang), melekat pada tulang rawan rusuk ke-7',
+                    '<strong>Rusuk Melayang (Costae Fluctuantes):</strong> 2 pasang (4 tulang), ujung depannya bebas melayang'
                 ],
                 location: 'Melengkung dari ruas tulang belakang bagian punggung (toraks) menuju ke depan ke arah tulang dada.',
-                function: 'Membentuk sangkar pelindung bagi jantung dan paru-paru, serta membantu mekanisme pernapasan dada (mengembang dan mengempis saat inspirasi dan ekspirasi).'
+                function: 'Membentuk sangkar pelindung bagi jantung dan paru-paru serta membantu mekanisme pernapasan dada.',
+                focusY: 1.68
             },
             {
                 id: 'clavicle',
@@ -788,11 +476,12 @@
                 countMain: '2 Tulang (Kanan & Kiri)',
                 countBreakdown: '1 tulang di bahu kanan dan 1 tulang di bahu kiri. Bersama tulang belikat membentuk gelang bahu (cingulum pectorale).',
                 subBones: [
-                    '<strong>Ujung Sternal (Extremitas Sternalis):</strong> bersendi dengan manubrium tulang dada',
-                    '<strong>Ujung Akromial (Extremitas Acromialis):</strong> bersendi dengan akromion tulang belikat'
+                    '<strong>Extremitas Sternalis:</strong> ujung dalam yang bersendi dengan manubrium tulang dada',
+                    '<strong>Extremitas Acromialis:</strong> ujung luar yang bersendi dengan akromion tulang belikat'
                 ],
-                location: 'Terletak secara horizontal di bagian depan atas dada, tepat di bawah leher dan di atas tulang rusuk pertama.',
-                function: 'Menopang bahu agar tetap pada posisinya sehingga lengan dapat bergerak leluasa, serta menyalurkan gaya mekanik dari lengan ke kerangka aksial.'
+                location: 'Terletak horizontal di bagian depan atas dada, tepat di bawah leher dan di atas rusuk pertama.',
+                function: 'Menjaga posisi bahu agar lengan dapat bergerak bebas serta menyalurkan gaya mekanik dari lengan ke rangka aksial.',
+                focusY: 1.96
             },
             {
                 id: 'scapula',
@@ -801,13 +490,14 @@
                 category: 'Apendikular',
                 shape: 'Tulang Pipih Segitiga',
                 countMain: '2 Tulang (Kanan & Kiri)',
-                countBreakdown: '1 tulang di punggung atas sebelah kanan dan 1 tulang di sebelah kiri.',
+                countBreakdown: '1 tulang berbentuk segitiga pipih di punggung atas sebelah kanan dan 1 di sebelah kiri.',
                 subBones: [
-                    '<strong>Kavitas Glenoidalis:</strong> mangkuk sendi tempat kepala tulang lengan atas (humerus) menempel',
-                    '<strong>Akromion & Prosesus Korakoideus:</strong> tonjolan tempat melekatnya otot bahu dan ligamen'
+                    '<strong>Cavitas Glenoidalis:</strong> mangkuk sendi tempat kepala humerus menempel',
+                    '<strong>Spina Scapulae & Acromion:</strong> tonjolan tulang di bagian belakang bahu'
                 ],
-                location: 'Terletak di bagian punggung atas (posterior toraks), menutupi sebagian tulang rusuk ke-2 hingga ke-7.',
-                function: 'Menghubungkan tulang lengan atas (humerus) dengan tulang selangka dan menjadi tempat perlekatan 17 otot penggerak bahu dan lengan.'
+                location: 'Terletak di punggung bagian atas (posterior toraks), menutupi sebagian tulang rusuk ke-2 hingga ke-7.',
+                function: 'Menghubungkan tulang lengan atas dengan tulang selangka dan menjadi tempat melekatnya 17 otot bahu dan lengan.',
+                focusY: 1.85
             },
             {
                 id: 'humerus',
@@ -816,13 +506,14 @@
                 category: 'Apendikular',
                 shape: 'Tulang Pipa (Ossa Longa)',
                 countMain: '2 Tulang (Kanan & Kiri)',
-                countBreakdown: 'Merupakan tulang terbesar dan terpanjang pada anggota gerak atas (1 di lengan kanan, 1 di lengan kiri).',
+                countBreakdown: 'Tulang terpanjang dan terbesar pada anggota gerak atas (1 di lengan kanan, 1 di lengan kiri).',
                 subBones: [
-                    '<strong>Caput Humeri:</strong> kepala sendi bulat yang masuk ke rongga glenoid tulang belikat (sendi peluru)',
-                    '<strong>Trochlea & Capitulum:</strong> ujung bawah yang bersendi dengan tulang hasta dan pengumpil membentuk siku'
+                    '<strong>Caput Humeri:</strong> kepala sendi bulat yang masuk ke rongga glenoid (sendi peluru)',
+                    '<strong>Trochlea & Capitulum:</strong> ujung bawah yang bersendi dengan ulna dan radius di siku'
                 ],
                 location: 'Membentang dari sendi bahu hingga ke sendi siku.',
-                function: 'Menjadi tuas utama penggerak lengan dan tempat melekatnya otot-otot besar seperti otot bisep, trisep, dan deltoid.'
+                function: 'Menjadi tuas utama penggerak lengan atas dan tempat melekatnya otot bisep, trisep, serta deltoid.',
+                focusY: 1.62
             },
             {
                 id: 'radius',
@@ -831,13 +522,14 @@
                 category: 'Apendikular',
                 shape: 'Tulang Pipa (Ossa Longa)',
                 countMain: '2 Tulang (Kanan & Kiri)',
-                countBreakdown: '1 tulang di lengan bawah kanan dan 1 di lengan bawah kiri, sejajar dengan arah ibu jari (sisi lateral).',
+                countBreakdown: '1 tulang di lengan bawah kanan dan 1 di lengan bawah kiri, terletak lurus sejajar dengan ibu jari (sisi lateral).',
                 subBones: [
-                    '<strong>Caput Radii:</strong> ujung atas berbentuk cakram yang memungkinkan gerakan memutar lengan bawah',
-                    '<strong>Processus Styloideus Radii:</strong> ujung bawah yang lebar bersendi dengan tulang pergelangan tangan'
+                    '<strong>Caput Radii:</strong> ujung atas berbentuk cakram yang memungkinkan gerakan memutar',
+                    '<strong>Processus Styloideus Radii:</strong> ujung bawah yang bersendi dengan pergelangan tangan'
                 ],
-                location: 'Terletak di sisi luar (lateral) lengan bawah, lurus sejajar dengan posisi ibu jari.',
-                function: 'Memungkinkan lengan bawah berputar (gerakan pronasi dan supinasi/menelungkup dan menengadah) serta menopang pergelangan tangan.'
+                location: 'Terletak di sisi luar (lateral) lengan bawah, searah dengan posisi ibu jari.',
+                function: 'Memungkinkan lengan bawah berputar (gerakan pronasi/menelungkup dan supinasi/menengadah) serta menopang pergelangan tangan.',
+                focusY: 1.25
             },
             {
                 id: 'ulna',
@@ -846,13 +538,14 @@
                 category: 'Apendikular',
                 shape: 'Tulang Pipa (Ossa Longa)',
                 countMain: '2 Tulang (Kanan & Kiri)',
-                countBreakdown: '1 tulang di lengan bawah kanan dan 1 di lengan bawah kiri, sejajar dengan arah jari kelingking (sisi medial).',
+                countBreakdown: '1 tulang di lengan bawah kanan dan 1 di lengan bawah kiri, terletak lurus sejajar dengan jari kelingking (sisi medial).',
                 subBones: [
-                    '<strong>Olecranon:</strong> tonjolan tulang di bagian atas yang membentuk ujung siku',
-                    '<strong>Incisura Trochlearis:</strong> cekungan yang mengait pada tulang lengan atas (sendi engsel)'
+                    '<strong>Olecranon:</strong> tonjolan tulang atas yang membentuk ujung siku',
+                    '<strong>Incisura Trochlearis:</strong> cekungan sendi engsel pada siku'
                 ],
-                location: 'Terletak di sisi dalam (medial) lengan bawah, lurus sejajar dengan posisi jari kelingking.',
-                function: 'Membentuk sendi engsel pada siku untuk menekuk dan meluruskan lengan, serta menjadi poros stabil saat tulang pengumpil berputar.'
+                location: 'Terletak di sisi dalam (medial) lengan bawah, searah dengan posisi jari kelingking.',
+                function: 'Membentuk sendi engsel pada siku untuk menekuk/meluruskan lengan dan menjadi poros stabil saat radius berputar.',
+                focusY: 1.25
             },
             {
                 id: 'carpal',
@@ -866,8 +559,9 @@
                     '<strong>Baris Proksimal (4):</strong> Scaphoideum, Lunatum, Triquetrum, Pisiforme',
                     '<strong>Baris Distal (4):</strong> Trapezium, Trapezoideum, Capitatum, Hamatum'
                 ],
-                location: 'Terletak di antara ujung bawah tulang lengan bawah (radius-ulna) dan tulang telapak tangan.',
-                function: 'Memberikan fleksibilitas tinggi pada pergelangan tangan untuk bergerak ke berbagai arah (sendi geser/luncur) serta meredam guncangan.'
+                location: 'Terletak di antara ujung bawah tulang lengan bawah (radius-ulna) dan telapak tangan.',
+                function: 'Memberikan fleksibilitas tinggi pada pergelangan tangan untuk bergerak ke berbagai arah (sendi geser/luncur).',
+                focusY: 0.98
             },
             {
                 id: 'metacarpal',
@@ -878,11 +572,12 @@
                 countMain: '10 Tulang (5 per tangan)',
                 countBreakdown: 'Terdiri dari 5 tulang panjang ramping pada masing-masing telapak tangan (diberi nomor I–V dari ibu jari ke kelingking).',
                 subBones: [
-                    '<strong>Metakarpal I:</strong> terhubung ke ibu jari (memiliki sendi pelana yang sangat bebas)',
-                    '<strong>Metakarpal II–V:</strong> membentuk kerangka utama bagian tengah telapak tangan'
+                    '<strong>Metakarpal I:</strong> terhubung ke ibu jari (sendi pelana)',
+                    '<strong>Metakarpal II–V:</strong> membentuk kerangka utama telapak tangan'
                 ],
-                location: 'Terletak di bagian tengah tangan, menghubungkan pergelangan tangan dengan pangkal jari-jari tangan.',
-                function: 'Membentuk struktur telapak tangan dan menjadi tumpuan bagi jari-jari tangan saat menggenggam atau memegang benda.'
+                location: 'Terletak di bagian tengah tangan, menghubungkan pergelangan tangan dengan pangkal jari tangan.',
+                function: 'Membentuk struktur telapak tangan dan menjadi tumpuan bagi jari-jari saat menggenggam benda.',
+                focusY: 0.90
             },
             {
                 id: 'hand_phalanges',
@@ -891,14 +586,15 @@
                 category: 'Apendikular',
                 shape: 'Tulang Pipa Pendek',
                 countMain: '28 Tulang (14 per tangan)',
-                countBreakdown: 'Ibu jari memiliki 2 ruas (proksimal & distal), sedangkan keempat jari lainnya masing-masing memiliki 3 ruas (proksimal, media, distal) = 14 tulang per tangan.',
+                countBreakdown: 'Ibu jari memiliki 2 ruas (proksimal & distal), sedangkan 4 jari lainnya memiliki 3 ruas (proksimal, media, distal) = 14 tulang per tangan.',
                 subBones: [
                     '<strong>Phalanx Proximalis:</strong> 5 ruas pangkal jari',
                     '<strong>Phalanx Media:</strong> 4 ruas tengah jari (tidak ada pada ibu jari)',
                     '<strong>Phalanx Distalis:</strong> 5 ruas ujung jari'
                 ],
                 location: 'Terletak di bagian paling ujung (distal) anggota gerak atas.',
-                function: 'Melakukan gerakan motorik halus yang presisi seperti menggenggam, mencubit, menulis, dan menyentuh.'
+                function: 'Melakukan gerakan motorik halus yang presisi seperti menggenggam, mencubit, dan menulis.',
+                focusY: 0.82
             },
             {
                 id: 'pelvis',
@@ -907,14 +603,15 @@
                 category: 'Apendikular',
                 shape: 'Tulang Pipih & Tidak Beraturan',
                 countMain: '2 Tulang Panggul (6 Fusi)',
-                countBreakdown: 'Pada manusia dewasa terdiri dari 2 tulang pinggul besar (os coxae kanan dan kiri). Masing-masing merupakan gabungan (fusi) dari 3 tulang saat masa pertumbuhan.',
+                countBreakdown: 'Pada manusia dewasa terdiri dari 2 tulang pinggul besar (os coxae kanan & kiri). Masing-masing merupakan fusi dari 3 tulang saat masa pertumbuhan.',
                 subBones: [
-                    '<strong>Tulang Usus (Os Ilium):</strong> bagian terbesar berbentuk sayap di sisi atas pinggul',
-                    '<strong>Tulang Duduk (Os Ischium):</strong> bagian bawah yang menopang berat tubuh saat duduk',
+                    '<strong>Tulang Usus (Os Ilium):</strong> bagian sayap atas terbesar',
+                    '<strong>Tulang Duduk (Os Ischium):</strong> bagian bawah penopang tubuh saat duduk',
                     '<strong>Tulang Kemaluan (Os Pubis):</strong> bagian depan yang bertemu di simfisis pubis'
                 ],
                 location: 'Terletak di bagian bawah batang tubuh, menghubungkan tulang belakang (sakrum) dengan kedua tulang paha.',
-                function: 'Menyangga berat seluruh tubuh bagian atas saat berdiri maupun duduk, melindungi organ pencernaan bawah dan reproduksi, serta menjadi tempat sendi paha (asetabulum).'
+                function: 'Menyangga berat tubuh bagian atas saat berdiri/duduk, melindungi organ pencernaan bawah & reproduksi, serta tempat sendi paha.',
+                focusY: 1.15
             },
             {
                 id: 'femur',
@@ -926,11 +623,12 @@
                 countBreakdown: 'Merupakan tulang terpanjang, terberat, dan terkuat di seluruh tubuh manusia (1 di paha kanan, 1 di paha kiri).',
                 subBones: [
                     '<strong>Caput Femoris:</strong> kepala sendi bulat yang masuk ke mangkuk asetabulum panggul (sendi peluru)',
-                    '<strong>Trochanter Major & Minor:</strong> tonjolan tempat melekatnya otot-otot paha dan bokong',
-                    '<strong>Condylus Medialis & Lateralis:</strong> ujung bawah yang membentuk sendi lutut'
+                    '<strong>Trochanter Major & Minor:</strong> tonjolan perlekatan otot paha & bokong',
+                    '<strong>Condylus Medialis & Lateralis:</strong> ujung bawah pembentuk sendi lutut'
                 ],
-                location: 'Membentang dari gelang panggul hingga ke lutut.',
-                function: 'Menopang seluruh berat tubuh bagian atas saat berdiri, berjalan, berlari, dan melompat, serta menjadi tempat melekatnya otot paha yang kuat.'
+                location: 'Membentang dari gelang panggul hingga ke sendi lutut.',
+                function: 'Menopang seluruh berat tubuh bagian atas saat berdiri, berjalan, berlari, dan melompat.',
+                focusY: 0.85
             },
             {
                 id: 'patella',
@@ -941,11 +639,12 @@
                 countMain: '2 Tulang (Kanan & Kiri)',
                 countBreakdown: '1 tulang di lutut kanan dan 1 tulang di lutut kiri. Merupakan tulang sesamoid terbesar dalam tubuh manusia.',
                 subBones: [
-                    '<strong>Basis Patellae:</strong> bagian tepi atas yang melekat pada tendon otot kuadrisep paha',
+                    '<strong>Basis Patellae:</strong> tepi atas yang melekat pada tendon otot kuadrisep paha',
                     '<strong>Apex Patellae:</strong> ujung runcing bawah yang terhubung ke ligamen patela'
                 ],
                 location: 'Terletak di bagian depan sendi lutut, tertanam di dalam tendon otot paha depan.',
-                function: 'Melindungi bagian depan sendi lutut dari benturan dan meningkatkan daya ungkit (efisiensi mekanis) otot paha saat meluruskan kaki.'
+                function: 'Melindungi bagian depan sendi lutut dari benturan dan meningkatkan daya ungkit mekanis otot paha.',
+                focusY: 0.56
             },
             {
                 id: 'tibia',
@@ -956,11 +655,12 @@
                 countMain: '2 Tulang (Kanan & Kiri)',
                 countBreakdown: 'Merupakan tulang terbesar kedua di tubuh manusia setelah tulang paha (1 di tungkai kanan, 1 di tungkai kiri).',
                 subBones: [
-                    '<strong>Condylus Tibiae:</strong> dataran atas yang menerima beban dari tulang paha pada sendi lutut',
+                    '<strong>Condylus Tibiae:</strong> dataran atas penerima beban dari tulang paha di lutut',
                     '<strong>Malleolus Medialis:</strong> tonjolan mata kaki bagian dalam'
                 ],
                 location: 'Terletak di sisi depan dan dalam (medial) tungkai bawah, membentang dari lutut hingga pergelangan kaki.',
-                function: 'Menopang sebagian besar (sekitar 85%) berat badan dari tulang paha menuju ke telapak kaki.'
+                function: 'Menopang sekitar 85% beban berat badan dari tulang paha menuju ke telapak kaki.',
+                focusY: 0.34
             },
             {
                 id: 'fibula',
@@ -975,7 +675,8 @@
                     '<strong>Malleolus Lateralis:</strong> tonjolan mata kaki bagian luar'
                 ],
                 location: 'Terletak sejajar di sisi luar (lateral) dan agak ke belakang dari tulang kering (tibia).',
-                function: 'Menstabilkan sendi pergelangan kaki dan menjadi tempat melekatnya berbagai otot penggerak telapak dan jari kaki.'
+                function: 'Menstabilkan sendi pergelangan kaki dan menjadi tempat melekatnya otot penggerak telapak serta jari kaki.',
+                focusY: 0.34
             },
             {
                 id: 'tarsal',
@@ -986,12 +687,13 @@
                 countMain: '14 Tulang (7 per kaki)',
                 countBreakdown: 'Terdiri dari 7 tulang besar dan kuat pada masing-masing pergelangan dan tumit kaki (7 kanan + 7 kiri = 14 tulang).',
                 subBones: [
-                    '<strong>Calcaneus:</strong> tulang tumit (tulang tarsal terbesar yang menyentuh tanah)',
+                    '<strong>Calcaneus:</strong> tulang tumit (tulang tarsal terbesar penyentuh tanah)',
                     '<strong>Talus:</strong> tulang loncat yang bersendi langsung dengan tibia dan fibula',
-                    '<strong>Lainnya (5):</strong> Naviculare, Cuboideum, serta 3 tulang Cuneiforme (mediale, intermedium, laterale)'
+                    '<strong>Lainnya (5):</strong> Naviculare, Cuboideum, serta 3 tulang Cuneiforme'
                 ],
-                location: 'Terletak di bagian belakang kaki (tumit dan pergelangan kaki), di antara tungkai bawah dan telapak kaki.',
-                function: 'Menahan seluruh beban berat tubuh saat berdiri dan berjalan, serta membentuk lengkungan kaki (arkus pedis) untuk meredam benturan.'
+                location: 'Terletak di bagian belakang kaki (tumit dan pergelangan kaki).',
+                function: 'Menahan seluruh beban berat tubuh saat berdiri/berjalan serta membentuk lengkungan kaki (arkus pedis) untuk meredam benturan.',
+                focusY: 0.10
             },
             {
                 id: 'metatarsal',
@@ -1000,13 +702,14 @@
                 category: 'Apendikular',
                 shape: 'Tulang Pipa Pendek',
                 countMain: '10 Tulang (5 per kaki)',
-                countBreakdown: 'Terdiri dari 5 tulang panjang pada masing-masing telapak kaki (diberi nomor I–V dari ibu jari kaki ke kelingking kaki).',
+                countBreakdown: 'Terdiri dari 5 tulang panjang pada masing-masing telapak kaki (nomor I–V dari ibu jari kaki ke kelingking kaki).',
                 subBones: [
-                    '<strong>Metatarsal I:</strong> tulang paling tebal dan pendek yang menopang ibu jari kaki',
-                    '<strong>Metatarsal II–V:</strong> membentuk lengkungan panjang telapak kaki'
+                    '<strong>Metatarsal I:</strong> tulang paling tebal penopang ibu jari kaki',
+                    '<strong>Metatarsal II–V:</strong> pembentuk lengkungan panjang telapak kaki'
                 ],
-                location: 'Terletak di bagian tengah telapak kaki, menghubungkan tulang pergelangan kaki (tarsal) dengan jari-jari kaki.',
-                function: 'Menjaga keseimbangan tubuh saat berdiri dan bertindak sebagai pegas saat melangkah atau berlari.'
+                location: 'Terletak di bagian tengah telapak kaki, menghubungkan tarsal dengan jari kaki.',
+                function: 'Menjaga keseimbangan tubuh saat berdiri dan bertindak sebagai pegas saat melangkah atau berlari.',
+                focusY: 0.05
             },
             {
                 id: 'foot_phalanges',
@@ -1015,40 +718,808 @@
                 category: 'Apendikular',
                 shape: 'Tulang Pipa Pendek',
                 countMain: '28 Tulang (14 per kaki)',
-                countBreakdown: 'Ibu jari kaki (hallux) memiliki 2 ruas tulang, sedangkan 4 jari kaki lainnya masing-masing memiliki 3 ruas tulang (14 kanan + 14 kiri = 28 tulang).',
+                countBreakdown: 'Ibu jari kaki (hallux) memiliki 2 ruas tulang, sedangkan 4 jari kaki lainnya memiliki 3 ruas tulang (14 kanan + 14 kiri = 28 tulang).',
                 subBones: [
                     '<strong>Phalanx Proximalis:</strong> 5 ruas pangkal jari kaki',
                     '<strong>Phalanx Media:</strong> 4 ruas tengah jari kaki (tidak ada pada ibu jari kaki)',
                     '<strong>Phalanx Distalis:</strong> 5 ruas ujung jari kaki'
                 ],
-                location: 'Terletak di bagian paling depan (anterior/distal) dari telapak kaki.',
-                function: 'Memberikan keseimbangan ekstra dan daya dorong terakhir (toe-off) saat manusia berjalan atau berlari.'
+                location: 'Terletak di bagian paling depan (anterior/distal) telapak kaki.',
+                function: 'Memberikan keseimbangan ekstra dan daya dorong akhir (toe-off) saat berjalan atau berlari.',
+                focusY: 0.03
             }
         ];
 
-        // State Aplikasi
+        // =====================================================================
+        // 2. VARIABEL GLOBAL THREE.JS & STATE APLIKASI
+        // =====================================================================
+        let scene, camera, renderer, controls;
+        let skeletonRoot = new THREE.Group();
+        let boneGroupsMap = {}; // Menyimpan THREE.Group per id tulang
+        let interactiveMeshes = []; // Semua mesh yang bisa di-raycast
+        let raycaster = new THREE.Raycaster();
+        let mouse = new THREE.Vector2();
+
         let selectedBoneId = 'cranium';
+        let hoveredBoneId = null;
         let currentCategory = 'all';
-        let currentZoom = 1;
         let isQuizMode = false;
         let quizTargetBone = null;
         let quizScore = 0;
         let quizTotal = 0;
 
-        // Inisialisasi saat Halaman Dimuat
-        document.addEventListener('DOMContentLoaded', () => {
-            renderBoneList();
-            selectBone('cranium', false);
+        // Animasi Kamera Halus (Lerp)
+        let targetCameraPos = null;
+        let targetControlsLookAt = null;
+        let pointerDownPos = { x: 0, y: 0 };
+
+        // Material Tulang (Gading Realistis, Hover Emas, Active Teal, Dimmed)
+        const MAT_BONE_NORMAL = new THREE.MeshStandardMaterial({
+            color: 0xf3ead8,
+            roughness: 0.42,
+            metalness: 0.05,
+        });
+        const MAT_BONE_HOVER = new THREE.MeshStandardMaterial({
+            color: 0xfacc15,
+            emissive: 0x854d0e,
+            emissiveIntensity: 0.45,
+            roughness: 0.3,
+            metalness: 0.1,
+        });
+        const MAT_BONE_ACTIVE = new THREE.MeshStandardMaterial({
+            color: 0x2dd4bf,
+            emissive: 0x0f766e,
+            emissiveIntensity: 0.55,
+            roughness: 0.25,
+            metalness: 0.12,
+        });
+        const MAT_BONE_DIMMED = new THREE.MeshStandardMaterial({
+            color: 0x334155,
+            roughness: 0.7,
+            transparent: true,
+            opacity: 0.28,
+        });
+        const MAT_SOCKET_DARK = new THREE.MeshStandardMaterial({
+            color: 0x1e293b,
+            roughness: 0.85,
         });
 
-        // Render Daftar Tulang di Sidebar Kiri
+        // =====================================================================
+        // 3. INISIALISASI SCENE 3D & PEMBANGUNAN MODEL RANGKA ANATOMIS
+        // =====================================================================
+        window.onload = function () {
+            initThreeJS();
+            buildProceduralSkeleton3D();
+            renderBoneList();
+            selectBone('cranium', false);
+            document.getElementById('loadingOverlay').classList.add('hidden');
+            animate();
+        };
+
+        function initThreeJS() {
+            const container = document.getElementById('canvas-container');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            // Scene
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x090d16, 0.08);
+
+            // Camera Perspektif
+            camera = new THREE.PerspectiveCamera(42, width / height, 0.1, 100);
+            camera.position.set(0, 1.35, 3.65);
+
+            // WebGL Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.outputEncoding = THREE.sRGBEncoding;
+            container.appendChild(renderer.domElement);
+
+            // OrbitControls untuk Putar 360°, Zoom, dan Pan
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.target.set(0, 1.25, 0);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.06;
+            controls.minDistance = 0.9;
+            controls.maxDistance = 6.5;
+            controls.maxPolarAngle = Math.PI * 0.95;
+            controls.update();
+
+            // Hentikan animasi fokus kamera otomatis jika pengguna mulai memutar manual
+            controls.addEventListener('start', () => {
+                targetCameraPos = null;
+                targetControlsLookAt = null;
+            });
+
+            // Pencahayaan Studio 3-Point Lighting agar detail 3D tulang menonjol
+            const ambientLight = new THREE.HemisphereLight(0xe0f2fe, 0x1e293b, 0.75);
+            scene.add(ambientLight);
+
+            const keyLight = new THREE.DirectionalLight(0xfffbeb, 1.15);
+            keyLight.position.set(2.8, 4.2, 3.5);
+            keyLight.castShadow = true;
+            keyLight.shadow.mapSize.width = 1024;
+            keyLight.shadow.mapSize.height = 1024;
+            scene.add(keyLight);
+
+            const fillLight = new THREE.DirectionalLight(0x99f6e4, 0.55);
+            fillLight.position.set(-3.2, 2.2, 2.0);
+            scene.add(fillLight);
+
+            const rimLight = new THREE.DirectionalLight(0x38bdf8, 0.65);
+            rimLight.position.set(0, 3.0, -3.5);
+            scene.add(rimLight);
+
+            // Grid Lantai Medis & Pedestal Pijakan
+            const gridHelper = new THREE.GridHelper(3.2, 24, 0x14b8a6, 0x1e293b);
+            gridHelper.position.y = -0.02;
+            scene.add(gridHelper);
+
+            const pedestalGeo = new THREE.CylinderGeometry(0.65, 0.72, 0.03, 48);
+            const pedestalMat = new THREE.MeshStandardMaterial({
+                color: 0x0f172a,
+                roughness: 0.4,
+                metalness: 0.6
+            });
+            const pedestal = new THREE.Mesh(pedestalGeo, pedestalMat);
+            pedestal.position.y = -0.015;
+            pedestal.receiveShadow = true;
+            scene.add(pedestal);
+
+            scene.add(skeletonRoot);
+
+            // Event Listener Pointer & Resize
+            const domEl = renderer.domElement;
+            domEl.addEventListener('pointerdown', onPointerDown);
+            domEl.addEventListener('pointermove', onPointerMove);
+            domEl.addEventListener('pointerup', onPointerUp);
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        // Helper Membuat Grup Tulang Interaktif
+        function createBoneGroup(boneId) {
+            const group = new THREE.Group();
+            group.userData.boneId = boneId;
+            boneGroupsMap[boneId] = group;
+            skeletonRoot.add(group);
+            return group;
+        }
+
+        function addPart(group, geometry, pos = [0, 0, 0], rot = [0, 0, 0], scale = [1, 1, 1], isDarkSocket = false) {
+            const mesh = new THREE.Mesh(geometry, isDarkSocket ? MAT_SOCKET_DARK : MAT_BONE_NORMAL);
+            mesh.position.set(...pos);
+            mesh.rotation.set(...rot);
+            mesh.scale.set(...scale);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            mesh.userData.boneId = group.userData.boneId;
+            mesh.userData.isDarkSocket = isDarkSocket;
+            group.add(mesh);
+            if (!isDarkSocket) {
+                interactiveMeshes.push(mesh);
+            }
+            return mesh;
+        }
+
+        // Helper Membuat Tulang Pipa Anatomis (Batang + Bonggol Sendi Atas & Bawah)
+        function createLongBone(group, startVec, endVec, rShaft, rHeadTop, rHeadBottom) {
+            const dir = new THREE.Vector3().subVectors(endVec, startVec);
+            const len = dir.length();
+            const mid = new THREE.Vector3().addVectors(startVec, endVec).multiplyScalar(0.5);
+
+            // Batang Tulang (Cylinder sedikit melengkung / meruncing)
+            const shaftGeo = new THREE.CylinderGeometry(rShaft * 0.92, rShaft, len, 16);
+            const shaft = new THREE.Mesh(shaftGeo, MAT_BONE_NORMAL);
+            shaft.position.copy(mid);
+            shaft.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
+            shaft.castShadow = true;
+            shaft.userData.boneId = group.userData.boneId;
+            group.add(shaft);
+            interactiveMeshes.push(shaft);
+
+            // Bonggol Sendi Atas (Epifisis Proksimal)
+            if (rHeadTop > 0) {
+                const topGeo = new THREE.SphereGeometry(rHeadTop, 16, 14);
+                const topMesh = new THREE.Mesh(topGeo, MAT_BONE_NORMAL);
+                topMesh.position.copy(startVec);
+                topMesh.scale.set(1.15, 0.9, 1.0);
+                topMesh.castShadow = true;
+                topMesh.userData.boneId = group.userData.boneId;
+                group.add(topMesh);
+                interactiveMeshes.push(topMesh);
+            }
+
+            // Bonggol Sendi Bawah (Epifisis Distal / Kondilus)
+            if (rHeadBottom > 0) {
+                const botGeo = new THREE.SphereGeometry(rHeadBottom, 16, 14);
+                const botMesh = new THREE.Mesh(botGeo, MAT_BONE_NORMAL);
+                botMesh.position.copy(endVec);
+                botMesh.scale.set(1.25, 0.85, 1.0);
+                botMesh.castShadow = true;
+                botMesh.userData.boneId = group.userData.boneId;
+                group.add(botMesh);
+                interactiveMeshes.push(botMesh);
+            }
+        }
+
+        // Helper Membuat Lengkungan Tabung 3D (TubeGeometry) untuk Rusuk, Selangka, Panggul
+        function createCurvedTubeBone(group, pointsArray, radius, tubularSegments = 24) {
+            const curve = new THREE.CatmullRomCurve3(pointsArray.map(p => new THREE.Vector3(...p)));
+            const geo = new THREE.TubeGeometry(curve, tubularSegments, radius, 10, false);
+            return addPart(group, geo);
+        }
+
+        // =====================================================================
+        // PEMBANGUNAN GEOMETRI PROSEDURAL RANGKA MANUSIA LENGKAP (3D ANATOMIS)
+        // =====================================================================
+        function buildProceduralSkeleton3D() {
+            // -----------------------------------------------------------------
+            // 1. TULANG TENGKORAK (CRANIUM & MANDIBULA)
+            // -----------------------------------------------------------------
+            const gCranium = createBoneGroup('cranium');
+            // Kubah Kranium (Frontal, Parietal, Occipital)
+            addPart(gCranium, new THREE.SphereGeometry(0.145, 28, 24), [0, 2.38, -0.015], [0, 0, 0], [0.92, 1.08, 1.12]);
+            // Tulang Wajah Atas (Maksila & Zigomatik)
+            addPart(gCranium, new THREE.CylinderGeometry(0.088, 0.068, 0.11, 20), [0, 2.26, 0.075], [0.12, 0, 0], [1.05, 1.0, 0.9]);
+            // Tonjolan Alis (Superciliary Arch)
+            addPart(gCranium, new THREE.TorusGeometry(0.075, 0.016, 10, 20, Math.PI * 0.75), [0, 2.31, 0.105], [0.2, 0, Math.PI * 0.125]);
+            // Tulang Pipi Kanan & Kiri (Zygomaticum)
+            [-1, 1].forEach(side => {
+                addPart(gCranium, new THREE.SphereGeometry(0.032, 14, 12), [side * 0.072, 2.27, 0.085], [0, 0, 0], [1.1, 0.85, 1.1]);
+                // Rongga Mata (Orbita)
+                addPart(gCranium, new THREE.SphereGeometry(0.028, 14, 12), [side * 0.044, 2.295, 0.118], [0, 0, 0], [1.05, 0.9, 0.6], true);
+            });
+            // Rongga Hidung (Cavum Nasi)
+            addPart(gCranium, new THREE.ConeGeometry(0.018, 0.042, 3), [0, 2.255, 0.132], [0, 0, 0], [0.9, 1.0, 0.6], true);
+            // Rahang Bawah (Mandibula) berbentuk U 3D
+            createCurvedTubeBone(gCranium, [
+                [-0.068, 2.25, 0.02],
+                [-0.062, 2.185, 0.055],
+                [0, 2.172, 0.112],
+                [0.062, 2.185, 0.055],
+                [0.068, 2.25, 0.02]
+            ], 0.016, 24);
+            // Deretan Gigi Atas & Bawah
+            for (let i = -3; i <= 3; i++) {
+                addPart(gCranium, new THREE.BoxGeometry(0.011, 0.015, 0.012), [i * 0.013, 2.208, 0.116]);
+                addPart(gCranium, new THREE.BoxGeometry(0.010, 0.014, 0.011), [i * 0.012, 2.192, 0.112]);
+            }
+
+            // -----------------------------------------------------------------
+            // 2. TULANG BELAKANG (COLUMNA VERTEBRALIS: 26 TULANG)
+            // -----------------------------------------------------------------
+            const gVertebrae = createBoneGroup('vertebrae');
+            // 24 Ruas Presakral (7 Servikal, 12 Torakal, 5 Lumbal) dengan kurva S anatomis
+            for (let i = 0; i < 24; i++) {
+                const t = i / 23; // 0 = atas (leher), 1 = bawah (pinggang)
+                const y = 2.12 - t * 0.86;
+                // Kurva S fisiologis (lordosis servikal, kifosis torakal, lordosis lumbal)
+                const zCurve = Math.sin(t * Math.PI * 2.1) * 0.028 - 0.045;
+                const radius = 0.022 + t * 0.018;
+                const height = 0.022 + t * 0.012;
+
+                // Badan ruas (Corpus vertebrae)
+                addPart(gVertebrae, new THREE.CylinderGeometry(radius, radius * 1.04, height, 14), [0, y, zCurve], [0, 0, 0], [1.15, 1, 0.95]);
+                // Taju Duri Belakang (Processus spinosus)
+                addPart(gVertebrae, new THREE.BoxGeometry(0.010, height * 0.75, 0.036), [0, y - 0.004, zCurve - radius - 0.012], [0.25, 0, 0]);
+                // Taju Samping (Processus transversus)
+                addPart(gVertebrae, new THREE.BoxGeometry(radius * 2.8, height * 0.45, 0.010), [0, y, zCurve - 0.01]);
+            }
+            // Tulang Kelangkang (Os Sacrum) & Tulang Ekor (Os Coccygis)
+            addPart(gVertebrae, new THREE.ConeGeometry(0.072, 0.145, 6), [0, 1.18, -0.062], [Math.PI + 0.18, 0, 0], [1.15, 1.0, 0.55]);
+            addPart(gVertebrae, new THREE.ConeGeometry(0.024, 0.055, 5), [0, 1.09, -0.045], [Math.PI - 0.15, 0, 0], [1.0, 1.0, 0.6]);
+
+            // -----------------------------------------------------------------
+            // 3. TULANG DADA (STERNUM)
+            // -----------------------------------------------------------------
+            const gSternum = createBoneGroup('sternum');
+            // Manubrium Sterni (Hulu)
+            addPart(gSternum, new THREE.CylinderGeometry(0.042, 0.028, 0.065, 8), [0, 1.91, 0.095], [-0.14, 0, 0], [1.15, 1.0, 0.35]);
+            // Corpus Sterni (Badan)
+            addPart(gSternum, new THREE.BoxGeometry(0.044, 0.185, 0.016), [0, 1.78, 0.112], [-0.05, 0, 0]);
+            // Processus Xiphoideus (Taju Pedang)
+            addPart(gSternum, new THREE.ConeGeometry(0.016, 0.045, 4), [0, 1.665, 0.115], [Math.PI, 0, 0], [1.0, 1.0, 0.4]);
+
+            // -----------------------------------------------------------------
+            // 4. TULANG RUSUK (COSTAE - 12 PASANG = 24 TULANG)
+            // -----------------------------------------------------------------
+            const gRibs = createBoneGroup('ribs');
+            for (let r = 0; r < 12; r++) {
+                const yBack = 1.96 - r * 0.036;
+                const yFront = yBack - 0.045;
+                // Lebar sangkar dada membesar di tengah lalu mengecil di bawah
+                const widthScale = Math.sin((r / 11) * Math.PI * 0.85 + 0.25) * 0.155 + 0.045;
+                const depthFront = r < 7 ? 0.112 : (r < 10 ? 0.095 : 0.035);
+
+                [-1, 1].forEach(side => {
+                    if (r < 7) {
+                        // 7 Pasang Rusuk Sejati (melekat langsung ke Sternum)
+                        createCurvedTubeBone(gRibs, [
+                            [side * 0.022, yBack, -0.045],
+                            [side * (widthScale * 0.75), yBack - 0.01, -0.075],
+                            [side * widthScale, (yBack + yFront) * 0.5, 0.02],
+                            [side * (widthScale * 0.65), yFront, 0.105],
+                            [side * 0.022, yFront + 0.005, depthFront]
+                        ], 0.0085, 20);
+                    } else if (r < 10) {
+                        // 3 Pasang Rusuk Palsu (melengkung naik menyatu ke tulang rawan rusuk atas)
+                        createCurvedTubeBone(gRibs, [
+                            [side * 0.024, yBack, -0.042],
+                            [side * (widthScale * 0.8), yBack - 0.01, -0.068],
+                            [side * widthScale, yBack - 0.035, 0.015],
+                            [side * (widthScale * 0.65), yBack - 0.04, 0.09],
+                            [side * 0.045, 1.71, 0.108]
+                        ], 0.008, 20);
+                    } else {
+                        // 2 Pasang Rusuk Melayang (pendek, ujung depan bebas)
+                        createCurvedTubeBone(gRibs, [
+                            [side * 0.026, yBack, -0.038],
+                            [side * (widthScale * 0.85), yBack - 0.012, -0.055],
+                            [side * (widthScale * 0.95), yBack - 0.025, 0.005]
+                        ], 0.0075, 14);
+                    }
+                });
+            }
+
+            // -----------------------------------------------------------------
+            // 5. TULANG SELANGKA (CLAVICULA - 2 TULANG)
+            // -----------------------------------------------------------------
+            const gClavicle = createBoneGroup('clavicle');
+            [-1, 1].forEach(side => {
+                createCurvedTubeBone(gClavicle, [
+                    [side * 0.026, 1.945, 0.095],
+                    [side * 0.095, 1.965, 0.105],
+                    [side * 0.165, 1.965, 0.045],
+                    [side * 0.215, 1.972, 0.012]
+                ], 0.012, 18);
+            });
+
+            // -----------------------------------------------------------------
+            // 6. TULANG BELIKAT (SCAPULA - 2 TULANG)
+            // -----------------------------------------------------------------
+            const gScapula = createBoneGroup('scapula');
+            [-1, 1].forEach(side => {
+                // Badan Belikat Segitiga Pipih di Punggung
+                addPart(gScapula, new THREE.ConeGeometry(0.078, 0.185, 3), [side * 0.135, 1.855, -0.088], [Math.PI + 0.12, side * 0.25, side * -0.15], [1.05, 1.0, 0.18]);
+                // Spina Scapulae & Akromion
+                addPart(gScapula, new THREE.BoxGeometry(0.125, 0.018, 0.028), [side * 0.155, 1.935, -0.072], [0, side * -0.35, side * 0.18]);
+                // Kavitas Glenoidalis (Mangkuk sendi bahu)
+                addPart(gScapula, new THREE.SphereGeometry(0.026, 14, 12), [side * 0.215, 1.935, -0.005]);
+            });
+
+            // -----------------------------------------------------------------
+            // 7. TULANG LENGAN ATAS (HUMERUS - 2 TULANG)
+            // -----------------------------------------------------------------
+            const gHumerus = createBoneGroup('humerus');
+            [-1, 1].forEach(side => {
+                createLongBone(
+                    gHumerus,
+                    new THREE.Vector3(side * 0.232, 1.925, 0.00),
+                    new THREE.Vector3(side * 0.265, 1.545, 0.012),
+                    0.019, 0.032, 0.028
+                );
+            });
+
+            // -----------------------------------------------------------------
+            // 8. TULANG PENGUMPIL (RADIUS - 2 TULANG, SISI LUAR / IBU JARI)
+            // -----------------------------------------------------------------
+            const gRadius = createBoneGroup('radius');
+            [-1, 1].forEach(side => {
+                createLongBone(
+                    gRadius,
+                    new THREE.Vector3(side * 0.278, 1.525, 0.018),
+                    new THREE.Vector3(side * 0.305, 1.175, 0.048),
+                    0.012, 0.016, 0.021
+                );
+            });
+
+            // -----------------------------------------------------------------
+            // 9. TULANG HASTA (ULNA - 2 TULANG, SISI DALAM / KELINGKING)
+            // -----------------------------------------------------------------
+            const gUlna = createBoneGroup('ulna');
+            [-1, 1].forEach(side => {
+                createLongBone(
+                    gUlna,
+                    new THREE.Vector3(side * 0.252, 1.535, 0.004),
+                    new THREE.Vector3(side * 0.278, 1.172, 0.025),
+                    0.013, 0.021, 0.015
+                );
+            });
+
+            // -----------------------------------------------------------------
+            // 10. PERGELANGAN TANGAN (CARPAL - 16 TULANG: 8 PER TANGAN)
+            // -----------------------------------------------------------------
+            const gCarpal = createBoneGroup('carpal');
+            [-1, 1].forEach(side => {
+                for (let row = 0; row < 2; row++) {
+                    for (let col = 0; col < 4; col++) {
+                        const cx = side * (0.276 + col * 0.011);
+                        const cy = 1.148 - row * 0.016;
+                        const cz = 0.026 + col * 0.006;
+                        addPart(gCarpal, new THREE.SphereGeometry(0.0085, 10, 8), [cx, cy, cz], [0, 0, 0], [1.1, 0.9, 0.85]);
+                    }
+                }
+            });
+
+            // -----------------------------------------------------------------
+            // 11. TELAPAK TANGAN (METACARPAL - 10 TULANG: 5 PER TANGAN)
+            // -----------------------------------------------------------------
+            const gMetacarpal = createBoneGroup('metacarpal');
+            [-1, 1].forEach(side => {
+                for (let f = 0; f < 5; f++) {
+                    const spread = (f - 2) * 0.011;
+                    const len = f === 0 ? 0.045 : 0.062;
+                    const start = new THREE.Vector3(side * (0.292 + spread * 0.6), 1.122, 0.036 + spread * 0.8);
+                    const end = new THREE.Vector3(side * (0.298 + spread * 1.15), 1.122 - len, 0.042 + spread * 1.25);
+                    createLongBone(gMetacarpal, start, end, 0.0048, 0.0065, 0.0065);
+                }
+            });
+
+            // -----------------------------------------------------------------
+            // 12. JARI TANGAN (PHALANGES MANUS - 28 TULANG: 14 PER TANGAN)
+            // -----------------------------------------------------------------
+            const gHandPhalanges = createBoneGroup('hand_phalanges');
+            [-1, 1].forEach(side => {
+                for (let f = 0; f < 5; f++) {
+                    const spread = (f - 2) * 0.011;
+                    const phalanxCount = f === 0 ? 2 : 3;
+                    let currY = f === 0 ? 1.072 : 1.055;
+                    let currX = side * (0.298 + spread * 1.15);
+                    let currZ = 0.042 + spread * 1.25;
+
+                    for (let p = 0; p < phalanxCount; p++) {
+                        const pLen = (0.026 - p * 0.0045) * (f === 2 ? 1.12 : 0.95);
+                        const start = new THREE.Vector3(currX, currY, currZ);
+                        const end = new THREE.Vector3(currX - side * 0.003, currY - pLen, currZ + spread * 0.15);
+                        createLongBone(gHandPhalanges, start, end, 0.004 - p * 0.0005, 0.005, 0.0045);
+                        currY -= (pLen + 0.003);
+                        currX -= side * 0.003;
+                    }
+                }
+            });
+
+            // -----------------------------------------------------------------
+            // 13. GELANG PANGGUL (PELVIS / COXAE - 2 TULANG BESAR)
+            // -----------------------------------------------------------------
+            const gPelvis = createBoneGroup('pelvis');
+            [-1, 1].forEach(side => {
+                // Sayap Tulang Usus (Os Ilium)
+                addPart(gPelvis, new THREE.CylinderGeometry(0.088, 0.055, 0.135, 18), [side * 0.105, 1.21, -0.015], [0.22, side * 0.45, side * -0.35], [1.15, 1.0, 0.32]);
+                // Krista Iliaka (Tepi atas lengkung panggul)
+                createCurvedTubeBone(gPelvis, [
+                    [side * 0.055, 1.24, -0.055],
+                    [side * 0.135, 1.265, -0.025],
+                    [side * 0.148, 1.21, 0.042]
+                ], 0.014, 16);
+                // Tulang Duduk (Os Ischium) & Tulang Kemaluan (Os Pubis) melingkari Foramen Obturatorium
+                createCurvedTubeBone(gPelvis, [
+                    [side * 0.135, 1.17, 0.032],
+                    [side * 0.012, 1.105, 0.065],
+                    [side * 0.068, 1.045, 0.015],
+                    [side * 0.115, 1.11, -0.025]
+                ], 0.015, 20);
+            });
+
+            // -----------------------------------------------------------------
+            // 14. TULANG PAHA (FEMUR - 2 TULANG TERPANJANG)
+            // -----------------------------------------------------------------
+            const gFemur = createBoneGroup('femur');
+            [-1, 1].forEach(side => {
+                // Leher & Kepala Femur masuk ke sendi panggul (asetabulum)
+                createLongBone(
+                    gFemur,
+                    new THREE.Vector3(side * 0.108, 1.125, 0.008),
+                    new THREE.Vector3(side * 0.145, 1.095, 0.005),
+                    0.017, 0.028, 0.024
+                );
+                // Batang Utama Femur miring sedikit ke dalam menuju lutut
+                createLongBone(
+                    gFemur,
+                    new THREE.Vector3(side * 0.145, 1.095, 0.005),
+                    new THREE.Vector3(side * 0.115, 0.615, 0.015),
+                    0.023, 0.026, 0.038
+                );
+            });
+
+            // -----------------------------------------------------------------
+            // 15. TULANG TEMPURUNG LUTUT (PATELLA - 2 TULANG)
+            // -----------------------------------------------------------------
+            const gPatella = createBoneGroup('patella');
+            [-1, 1].forEach(side => {
+                addPart(gPatella, new THREE.SphereGeometry(0.024, 16, 14), [side * 0.115, 0.595, 0.052], [0, 0, 0], [1.05, 1.15, 0.55]);
+            });
+
+            // -----------------------------------------------------------------
+            // 16. TULANG KERING (TIBIA - 2 TULANG BESAR TUNGKAI BAWAH)
+            // -----------------------------------------------------------------
+            const gTibia = createBoneGroup('tibia');
+            [-1, 1].forEach(side => {
+                createLongBone(
+                    gTibia,
+                    new THREE.Vector3(side * 0.112, 0.568, 0.012),
+                    new THREE.Vector3(side * 0.105, 0.135, 0.008),
+                    0.020, 0.036, 0.026
+                );
+            });
+
+            // -----------------------------------------------------------------
+            // 17. TULANG BETIS (FIBULA - 2 TULANG RAMPING SISI LUAR)
+            // -----------------------------------------------------------------
+            const gFibula = createBoneGroup('fibula');
+            [-1, 1].forEach(side => {
+                createLongBone(
+                    gFibula,
+                    new THREE.Vector3(side * 0.142, 0.548, -0.008),
+                    new THREE.Vector3(side * 0.132, 0.125, -0.005),
+                    0.009, 0.015, 0.015
+                );
+            });
+
+            // -----------------------------------------------------------------
+            // 18. PERGELANGAN KAKI (TARSAL - 14 TULANG: 7 PER KAKI)
+            // -----------------------------------------------------------------
+            const gTarsal = createBoneGroup('tarsal');
+            [-1, 1].forEach(side => {
+                // Tulang Tumit (Calcaneus) menonjol ke belakang
+                addPart(gTarsal, new THREE.BoxGeometry(0.036, 0.038, 0.068), [side * 0.115, 0.065, -0.018], [0.1, 0, 0]);
+                // Tulang Loncat (Talus) di atas tumit bersendi dengan tibia
+                addPart(gTarsal, new THREE.SphereGeometry(0.024, 14, 12), [side * 0.114, 0.102, 0.005], [0, 0, 0], [1.0, 0.85, 1.2]);
+                // 5 Tulang Tarsal Depan (Naviculare, Cuboideum, 3 Cuneiforme)
+                for (let t = 0; t < 5; t++) {
+                    addPart(gTarsal, new THREE.SphereGeometry(0.012, 10, 8), [side * (0.095 + t * 0.011), 0.062, 0.035]);
+                }
+            });
+
+            // -----------------------------------------------------------------
+            // 19. TELAPAK KAKI (METATARSAL - 10 TULANG: 5 PER KAKI)
+            // -----------------------------------------------------------------
+            const gMetatarsal = createBoneGroup('metatarsal');
+            [-1, 1].forEach(side => {
+                for (let m = 0; m < 5; m++) {
+                    const xPos = side * (0.092 + m * 0.012);
+                    const rBone = m === 0 ? 0.0075 : 0.0052;
+                    createLongBone(
+                        gMetatarsal,
+                        new THREE.Vector3(xPos, 0.056, 0.048),
+                        new THREE.Vector3(xPos * 1.04, 0.026, 0.115 - m * 0.004),
+                        rBone, rBone * 1.2, rBone * 1.2
+                    );
+                }
+            });
+
+            // -----------------------------------------------------------------
+            // 20. JARI KAKI (PHALANGES PEDIS - 28 TULANG: 14 PER KAKI)
+            // -----------------------------------------------------------------
+            const gFootPhalanges = createBoneGroup('foot_phalanges');
+            [-1, 1].forEach(side => {
+                for (let f = 0; f < 5; f++) {
+                    const xPos = side * (0.095 + f * 0.0125);
+                    const count = f === 0 ? 2 : 3;
+                    let currZ = 0.122 - f * 0.004;
+
+                    for (let p = 0; p < count; p++) {
+                        const pLen = (f === 0 ? 0.022 : 0.015) - p * 0.0025;
+                        const rToe = f === 0 ? 0.007 : 0.0045;
+                        createLongBone(
+                            gFootPhalanges,
+                            new THREE.Vector3(xPos, 0.024, currZ),
+                            new THREE.Vector3(xPos, 0.018, currZ + pLen),
+                            rToe, rToe * 1.15, rToe * 1.1
+                        );
+                        currZ += pLen + 0.003;
+                    }
+                }
+            });
+        }
+
+        // =====================================================================
+        // 4. INTERAKSI RAYCASTING (HOVER & KLIK 3D)
+        // =====================================================================
+        function updateMouseNDC(event) {
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+        }
+
+        function onPointerDown(event) {
+            pointerDownPos = { x: event.clientX, y: event.clientY };
+        }
+
+        function onPointerMove(event) {
+            updateMouseNDC(event);
+            raycaster.setFromCamera(mouse, camera);
+
+            const intersects = raycaster.intersectObjects(interactiveMeshes, false);
+            const tooltip = document.getElementById('tooltip3D');
+
+            if (intersects.length > 0) {
+                const hitBoneId = intersects[0].object.userData.boneId;
+                const boneObj = BONES_DATA.find(b => b.id === hitBoneId);
+
+                // Abaikan jika sedang di-dimmed oleh filter kategori
+                if (boneObj && (currentCategory === 'all' || boneObj.category === currentCategory)) {
+                    renderer.domElement.style.cursor = 'pointer';
+
+                    if (hoveredBoneId !== hitBoneId) {
+                        hoveredBoneId = hitBoneId;
+                        refresh3DMaterials();
+                    }
+
+                    // Tampilkan Tooltip Melayang (kecuali saat Mode Kuis aktif agar tidak membocorkan jawaban)
+                    if (!isQuizMode) {
+                        document.getElementById('tt3DName').textContent = boneObj.name;
+                        document.getElementById('tt3DLatin').textContent = boneObj.latin;
+                        document.getElementById('tt3DCount').textContent = boneObj.countMain;
+                        tooltip.style.left = `${event.clientX}px`;
+                        tooltip.style.top = `${event.clientY}px`;
+                        tooltip.classList.remove('hidden');
+                    } else {
+                        tooltip.classList.add('hidden');
+                    }
+                    return;
+                }
+            }
+
+            // Tidak ada tulang yang tersorot
+            renderer.domElement.style.cursor = 'grab';
+            tooltip.classList.add('hidden');
+            if (hoveredBoneId !== null) {
+                hoveredBoneId = null;
+                refresh3DMaterials();
+            }
+        }
+
+        function onPointerUp(event) {
+            // Bedakan antara drag (memutar 360 derajat) dan klik murni
+            const dist = Math.hypot(event.clientX - pointerDownPos.x, event.clientY - pointerDownPos.y);
+            if (dist > 6) return;
+
+            updateMouseNDC(event);
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(interactiveMeshes, false);
+
+            if (intersects.length > 0) {
+                const hitBoneId = intersects[0].object.userData.boneId;
+                const boneObj = BONES_DATA.find(b => b.id === hitBoneId);
+                if (boneObj && (currentCategory === 'all' || boneObj.category === currentCategory)) {
+                    selectBone(hitBoneId, false);
+                }
+            }
+        }
+
+        // Perbarui Material Semua Tulang 3D Sesuai Status (Active, Hover, Dimmed, Normal)
+        function refresh3DMaterials() {
+            BONES_DATA.forEach(bone => {
+                const group = boneGroupsMap[bone.id];
+                if (!group) return;
+
+                const isDimmed = currentCategory !== 'all' && bone.category !== currentCategory;
+                const isSelected = !isQuizMode && bone.id === selectedBoneId;
+                const isHovered = bone.id === hoveredBoneId;
+
+                let targetMat = MAT_BONE_NORMAL;
+                if (isDimmed) {
+                    targetMat = MAT_BONE_DIMMED;
+                } else if (isSelected) {
+                    targetMat = MAT_BONE_ACTIVE;
+                } else if (isHovered) {
+                    targetMat = MAT_BONE_HOVER;
+                }
+
+                group.children.forEach(mesh => {
+                    if (!mesh.userData.isDarkSocket) {
+                        mesh.material = targetMat;
+                    }
+                });
+            });
+        }
+
+        // =====================================================================
+        // 5. KONTROL KAMERA 360° PRESET & FOKUS OTOMATIS
+        // =====================================================================
+        function setCameraPreset(preset) {
+            // Matikan auto rotate jika user memilih sudut spesifik
+            if (controls.autoRotate && preset !== 'reset') {
+                toggleAutoRotate(false);
+            }
+
+            const centerY = 1.25;
+            targetControlsLookAt = new THREE.Vector3(0, centerY, 0);
+
+            switch (preset) {
+                case 'front':
+                    targetCameraPos = new THREE.Vector3(0, 1.35, 3.65);
+                    break;
+                case 'back':
+                    targetCameraPos = new THREE.Vector3(0, 1.35, -3.65);
+                    break;
+                case 'right':
+                    targetCameraPos = new THREE.Vector3(-3.65, 1.35, 0);
+                    break;
+                case 'left':
+                    targetCameraPos = new THREE.Vector3(3.65, 1.35, 0);
+                    break;
+                case 'top':
+                    targetCameraPos = new THREE.Vector3(0, 3.9, 0.65);
+                    break;
+                case 'reset':
+                default:
+                    targetCameraPos = new THREE.Vector3(0, 1.35, 3.65);
+                    break;
+            }
+        }
+
+        function focusCameraOnBone(bone) {
+            if (!bone || typeof bone.focusY !== 'number') return;
+            const y = bone.focusY;
+            targetControlsLookAt = new THREE.Vector3(0, y, 0);
+            // Pertahankan arah sudut rotasi horizontal pengguna saat ini, hanya mendekat ke ketinggian tulang
+            const currentOffset = new THREE.Vector3().subVectors(camera.position, controls.target);
+            currentOffset.y = 0.15;
+            if (currentOffset.length() < 1.2) currentOffset.setLength(2.2);
+            else if (currentOffset.length() > 3.2) currentOffset.setLength(2.6);
+
+            targetCameraPos = new THREE.Vector3(0, y, 0).add(currentOffset);
+        }
+
+        function toggleAutoRotate(forceState) {
+            const nextState = typeof forceState === 'boolean' ? forceState : !controls.autoRotate;
+            controls.autoRotate = nextState;
+            controls.autoRotateSpeed = 2.4;
+
+            const btn = document.getElementById('btnAutoRotate');
+            const text = document.getElementById('autoRotateText');
+            const icon = document.getElementById('autoRotateIcon');
+
+            if (nextState) {
+                text.textContent = 'Putar 360°: ON';
+                btn.classList.add('bg-teal-600/25', 'border-teal-500', 'text-teal-300');
+                icon.classList.add('animate-spin');
+            } else {
+                text.textContent = 'Putar 360°: OFF';
+                btn.classList.remove('bg-teal-600/25', 'border-teal-500', 'text-teal-300');
+                icon.classList.remove('animate-spin');
+            }
+        }
+
+        function onWindowResize() {
+            const container = document.getElementById('canvas-container');
+            if (!container || !renderer || !camera) return;
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Animasi perpindahan kamera halus (Smooth Lerp)
+            if (targetCameraPos && targetControlsLookAt) {
+                camera.position.lerp(targetCameraPos, 0.08);
+                controls.target.lerp(targetControlsLookAt, 0.08);
+                if (camera.position.distanceTo(targetCameraPos) < 0.02) {
+                    targetCameraPos = null;
+                    targetControlsLookAt = null;
+                }
+            }
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // =====================================================================
+        // 6. LOGIKA UI, DAFTAR TULANG, DETAIL & KUIS 3D
+        // =====================================================================
         function renderBoneList() {
             const container = document.getElementById('boneListContainer');
             const searchQuery = document.getElementById('searchInput').value.toLowerCase().trim();
-            
+
             const filtered = BONES_DATA.filter(bone => {
                 const matchCategory = currentCategory === 'all' || bone.category === currentCategory;
-                const matchSearch = bone.name.toLowerCase().includes(searchQuery) || 
+                const matchSearch = bone.name.toLowerCase().includes(searchQuery) ||
                                     bone.latin.toLowerCase().includes(searchQuery);
                 return matchCategory && matchSearch;
             });
@@ -1057,8 +1528,8 @@
 
             if (filtered.length === 0) {
                 container.innerHTML = `
-                    <div class="p-8 text-center text-slate-400 text-xs">
-                        <p class="font-semibold text-slate-500 mb-1">Tulang tidak ditemukan</p>
+                    <div class="p-8 text-center text-slate-500 text-xs">
+                        <p class="font-semibold text-slate-400 mb-1">Tulang tidak ditemukan</p>
                         <p>Coba kata kunci lain seperti "Femur", "Rusuk", atau "Kering".</p>
                     </div>
                 `;
@@ -1067,20 +1538,20 @@
 
             container.innerHTML = filtered.map(bone => {
                 const isActive = bone.id === selectedBoneId && !isQuizMode;
-                const badgeColor = bone.category === 'Aksial' 
-                    ? 'bg-indigo-50 text-indigo-700 border-indigo-200' 
-                    : 'bg-amber-50 text-amber-700 border-amber-200';
+                const badgeClass = bone.category === 'Aksial'
+                    ? 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30'
+                    : 'bg-amber-500/15 text-amber-300 border-amber-500/30';
 
                 return `
-                    <button onclick="handleListClick('${bone.id}')" 
-                        class="w-full text-left px-4 py-3 transition flex items-start justify-between gap-2 hover:bg-teal-50/60 ${isActive ? 'bg-teal-50 border-l-4 border-l-teal-600' : ''}">
+                    <button onclick="handleListClick('${bone.id}')"
+                        class="w-full text-left px-4 py-3 transition flex items-start justify-between gap-2 hover:bg-slate-800/80 ${isActive ? 'bg-teal-500/15 border-l-4 border-l-teal-400' : ''}">
                         <div>
-                            <p class="text-sm font-semibold ${isActive ? 'text-teal-800' : 'text-slate-800'} leading-snug">
+                            <p class="text-sm font-semibold ${isActive ? 'text-teal-300' : 'text-slate-200'} leading-snug">
                                 ${bone.name}
                             </p>
-                            <p class="text-xs italic text-slate-500 mt-0.5">${bone.latin}</p>
+                            <p class="text-xs italic text-slate-400 mt-0.5">${bone.latin}</p>
                         </div>
-                        <span class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border ${badgeColor}">
+                        <span class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border ${badgeClass}">
                             ${bone.category}
                         </span>
                     </button>
@@ -1088,70 +1559,50 @@
             }).join('');
         }
 
-        // Filter Berdasarkan Kategori
         function setCategoryFilter(category) {
             currentCategory = category;
 
-            // Update Tampilan Tombol Filter
             document.querySelectorAll('.filter-btn').forEach(btn => {
-                btn.classList.remove('bg-white', 'text-teal-700', 'shadow-sm');
-                btn.classList.add('text-slate-600');
+                btn.classList.remove('bg-teal-600', 'text-white', 'shadow');
+                btn.classList.add('text-slate-400');
             });
             const activeBtn = document.getElementById(`filter-${category}`);
-            activeBtn.classList.add('bg-white', 'text-teal-700', 'shadow-sm');
-            activeBtn.classList.remove('text-slate-600');
+            activeBtn.classList.add('bg-teal-600', 'text-white', 'shadow');
+            activeBtn.classList.remove('text-slate-400');
 
-            // Sorot / Redupkan Grup Tulang di SVG sesuai kategori
-            BONES_DATA.forEach(bone => {
-                const svgEl = document.getElementById(`bone-${bone.id}`);
-                if (!svgEl) return;
-                if (category === 'all' || bone.category === category) {
-                    svgEl.classList.remove('dimmed');
-                } else {
-                    svgEl.classList.add('dimmed');
-                }
-            });
-
+            refresh3DMaterials();
             renderBoneList();
         }
 
-        // Filter Pencarian
         function filterBoneList() {
             renderBoneList();
         }
 
-        // Handler klik dari Daftar Kiri
         function handleListClick(boneId) {
             if (isQuizMode) {
-                showToast('Klik langsung pada gambar rangka saat Mode Kuis aktif!', 'warning');
+                showToast('Putar model 3D dan klik langsung pada tulangnya saat Mode Kuis aktif!', 'warning');
                 return;
             }
             selectBone(boneId, true);
         }
 
-        // Fungsi Utama Memilih Tulang
-        function selectBone(boneId, scrollToView = false) {
+        function selectBone(boneId, shouldFocusCamera = true) {
             const bone = BONES_DATA.find(b => b.id === boneId);
             if (!bone) return;
 
-            // Jika sedang dalam Mode Kuis, evaluasi jawaban klik pada SVG
             if (isQuizMode) {
                 evaluateQuizAnswer(bone);
                 return;
             }
 
             selectedBoneId = boneId;
+            refresh3DMaterials();
 
-            // Hapus kelas active dari semua tulang SVG, lalu pasang pada tulang terpilih
-            document.querySelectorAll('.bone-group').forEach(el => {
-                el.classList.remove('active');
-            });
-            const targetSvg = document.getElementById(`bone-${boneId}`);
-            if (targetSvg) {
-                targetSvg.classList.add('active');
+            if (shouldFocusCamera) {
+                focusCameraOnBone(bone);
             }
 
-            // Perbarui Panel Informasi Detail di Kanan
+            // Perbarui Panel Informasi Kanan
             document.getElementById('detailName').textContent = bone.name;
             document.getElementById('detailLatin').querySelector('span').textContent = bone.latin;
             document.getElementById('detailCategoryBadge').textContent = `Rangka ${bone.category}`;
@@ -1161,11 +1612,10 @@
             document.getElementById('detailLocation').textContent = bone.location;
             document.getElementById('detailFunction').textContent = bone.function;
 
-            // Render Sub-Bones
             const subList = document.getElementById('detailSubBones');
             subList.innerHTML = bone.subBones.map(item => `
                 <li class="flex items-start gap-2">
-                    <span class="text-teal-600 font-bold mt-0.5">•</span>
+                    <span class="text-teal-400 font-bold mt-0.5">•</span>
                     <span>${item}</span>
                 </li>
             `).join('');
@@ -1173,47 +1623,17 @@
             renderBoneList();
         }
 
-        // Navigasi Tulang Sebelumnya / Berikutnya
         function navigateBone(direction) {
             if (isQuizMode) {
-                showToast('Selesaikan atau keluar dari Mode Kuis terlebih dahulu.', 'warning');
+                showToast('Keluar dari Mode Kuis terlebih dahulu untuk navigasi bebas.', 'warning');
                 return;
             }
-            const currentIndex = BONES_DATA.findIndex(b => b.id === selectedBoneId);
-            let nextIndex = (currentIndex + direction + BONES_DATA.length) % BONES_DATA.length;
-            selectBone(BONES_DATA[nextIndex].id);
+            const idx = BONES_DATA.findIndex(b => b.id === selectedBoneId);
+            const nextIdx = (idx + direction + BONES_DATA.length) % BONES_DATA.length;
+            selectBone(BONES_DATA[nextIdx].id, true);
         }
 
-        // Tooltip Hover pada SVG
-        function showTooltip(event, boneId) {
-            if (isQuizMode) return; // Sembunyikan contekan nama saat kuis!
-            const bone = BONES_DATA.find(b => b.id === boneId);
-            if (!bone) return;
-
-            const tooltip = document.getElementById('hoverTooltip');
-            document.getElementById('tooltipTitle').textContent = `${bone.name} (${bone.countMain})`;
-            document.getElementById('tooltipLatin').textContent = bone.latin;
-            tooltip.classList.remove('hidden');
-        }
-
-        function hideTooltip() {
-            document.getElementById('hoverTooltip').classList.add('hidden');
-        }
-
-        // Kontrol Zoom SVG
-        function zoomSvg(delta) {
-            currentZoom = Math.min(Math.max(currentZoom + delta, 0.75), 1.75);
-            document.getElementById('svgZoomContainer').style.transform = `scale(${currentZoom})`;
-        }
-
-        function resetZoom() {
-            currentZoom = 1;
-            document.getElementById('svgZoomContainer').style.transform = `scale(1)`;
-        }
-
-        // ==========================================
-        // LOGIKA MODE KUIS INTERAKTIF ("TEBAK TULANG")
-        // ==========================================
+        // Mode Kuis 3D
         function toggleQuizMode() {
             isQuizMode = !isQuizMode;
             const banner = document.getElementById('quizBanner');
@@ -1221,40 +1641,35 @@
             const btn = document.getElementById('btnToggleQuiz');
 
             if (isQuizMode) {
-                // Reset filter kategori ke 'all' agar semua tulang bisa diklik
                 setCategoryFilter('all');
-                document.querySelectorAll('.bone-group').forEach(el => el.classList.remove('active'));
-                hideTooltip();
-
+                document.getElementById('tooltip3D').classList.add('hidden');
                 quizScore = 0;
                 quizTotal = 0;
                 updateQuizScoreUI();
+                refresh3DMaterials();
 
                 banner.classList.remove('hidden');
                 btnText.textContent = 'Keluar Kuis';
-                btn.classList.remove('bg-amber-50', 'text-amber-700', 'border-amber-200');
-                btn.classList.add('bg-rose-600', 'text-white', 'border-rose-600');
+                btn.classList.remove('bg-amber-500/15', 'text-amber-300', 'border-amber-500/40');
+                btn.classList.add('bg-rose-600', 'text-white', 'border-rose-500');
 
                 nextQuizQuestion();
             } else {
                 banner.classList.add('hidden');
-                btnText.textContent = 'Kuis Tebak Tulang';
-                btn.classList.add('bg-amber-50', 'text-amber-700', 'border-amber-200');
-                btn.classList.remove('bg-rose-600', 'text-white', 'border-rose-600');
+                btnText.textContent = 'Kuis Tebak Tulang 3D';
+                btn.classList.add('bg-amber-500/15', 'text-amber-300', 'border-amber-500/40');
+                btn.classList.remove('bg-rose-600', 'text-white', 'border-rose-500');
 
-                selectBone(selectedBoneId);
+                selectBone(selectedBoneId, false);
             }
         }
 
         function nextQuizQuestion() {
-            // Pilih tulang secara acak (hindari soal yang sama berturut-turut)
             let candidates = BONES_DATA;
             if (quizTargetBone) {
                 candidates = BONES_DATA.filter(b => b.id !== quizTargetBone.id);
             }
-            const randomIdx = Math.floor(Math.random() * candidates.length);
-            quizTargetBone = candidates[randomIdx];
-
+            quizTargetBone = candidates[Math.floor(Math.random() * candidates.length)];
             document.getElementById('quizTargetName').textContent = `${quizTargetBone.name} (${quizTargetBone.latin})`;
         }
 
@@ -1262,25 +1677,22 @@
             if (!quizTargetBone) return;
             quizTotal++;
 
-            const targetEl = document.getElementById(`bone-${clickedBone.id}`);
-
             if (clickedBone.id === quizTargetBone.id) {
                 quizScore++;
                 updateQuizScoreUI();
 
-                // Sorot hijau sementara
-                if (targetEl) {
-                    targetEl.classList.add('active', 'quiz-correct');
-                    setTimeout(() => targetEl.classList.remove('active', 'quiz-correct'), 900);
+                // Sorot hijau/teal sebentar pada model 3D
+                const group = boneGroupsMap[clickedBone.id];
+                if (group) {
+                    group.children.forEach(m => { if (!m.userData.isDarkSocket) m.material = MAT_BONE_ACTIVE; });
+                    setTimeout(() => refresh3DMaterials(), 850);
                 }
 
-                showToast(`Benar! Itu adalah ${clickedBone.name} (${clickedBone.latin}).`, 'success');
-                setTimeout(() => {
-                    if (isQuizMode) nextQuizQuestion();
-                }, 900);
+                showToast(`Tepat sekali! Itu adalah ${clickedBone.name} (${clickedBone.latin}).`, 'success');
+                setTimeout(() => { if (isQuizMode) nextQuizQuestion(); }, 850);
             } else {
                 updateQuizScoreUI();
-                showToast(`Kurang tepat! Yang kamu klik adalah ${clickedBone.name}. Coba cari lagi!`, 'error');
+                showToast(`Salah! Yang kamu klik adalah ${clickedBone.name}. Coba putar rangka dan cari lagi!`, 'error');
             }
         }
 
@@ -1289,7 +1701,7 @@
             document.getElementById('quizTotal').textContent = quizTotal;
         }
 
-        // Toast Feedback Helper (Pengganti alert)
+        // Toast Feedback Helper
         let toastTimeout;
         function showToast(message, type = 'info') {
             const toast = document.getElementById('toastNotification');
@@ -1298,30 +1710,29 @@
             const msg = document.getElementById('toastMessage');
 
             msg.textContent = message;
+            content.className = 'px-4 py-3 rounded-xl shadow-2xl font-medium text-xs sm:text-sm flex items-center gap-2.5 text-white border ';
 
-            content.className = 'px-4 py-3 rounded-xl shadow-xl font-medium text-xs sm:text-sm flex items-center gap-2.5 text-white ';
             if (type === 'success') {
-                content.classList.add('bg-emerald-600');
+                content.classList.add('bg-emerald-600', 'border-emerald-400');
                 icon.textContent = '✅';
             } else if (type === 'error') {
-                content.classList.add('bg-rose-600');
+                content.classList.add('bg-rose-600', 'border-rose-400');
                 icon.textContent = '❌';
             } else if (type === 'warning') {
-                content.classList.add('bg-amber-600');
+                content.classList.add('bg-amber-600', 'border-amber-400');
                 icon.textContent = '💡';
             } else {
-                content.classList.add('bg-slate-900');
+                content.classList.add('bg-slate-900', 'border-slate-700');
                 icon.textContent = 'ℹ️';
             }
 
-            toast.classList.remove('translate-y-20', 'opacity-0');
+            toast.classList.remove('translate-y-24', 'opacity-0');
             clearTimeout(toastTimeout);
             toastTimeout = setTimeout(() => {
-                toast.classList.add('translate-y-20', 'opacity-0');
+                toast.classList.add('translate-y-24', 'opacity-0');
             }, 3000);
         }
 
-        // Kontrol Modal Ringkasan 206 Tulang
         function openInfoModal() {
             document.getElementById('infoModal').classList.remove('hidden');
         }
